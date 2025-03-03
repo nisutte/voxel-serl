@@ -33,20 +33,20 @@ def finetune_pointcloud_fusion(pc1: np.ndarray, pc2: np.ndarray):
     return transformation
 
 
-def pointcloud_to_voxel_grid(points: np.ndarray, voxel_size: float, min_bounds: np.ndarray, max_bounds: np.ndarray):
-    points_filtered = crop_pointcloud(points, min_bounds=min_bounds, max_bounds=max_bounds)
-    dimensions = np.ceil((max_bounds - min_bounds) / voxel_size).astype(int)
-    voxel_indices = ((points_filtered - min_bounds) / voxel_size).astype(int)
+def pointcloud_to_voxel_grid(points: np.ndarray, voxel_size: float, min_bounds: np.ndarray, max_bounds: np.ndarray, grid_dimensions: np.ndarray):
+    points_filtered = crop_pointcloud(points, min_bounds, max_bounds)
 
-    voxel_grid = np.zeros(dimensions, dtype=np.bool_)
-    valid_indices = np.all((voxel_indices >= 0) & (voxel_indices < dimensions), axis=1)
-    voxel_grid[voxel_indices[valid_indices, 0], voxel_indices[valid_indices, 1], voxel_indices[valid_indices, 2]] = True
-    return voxel_grid, voxel_indices[valid_indices, :].astype(np.uint8)
+    voxel_indices = ((points_filtered - min_bounds) / voxel_size).astype(np.uint8)
+    voxel_grid = np.zeros(grid_dimensions, dtype=np.bool_)
+    voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2]] = True
+
+    return voxel_grid, voxel_indices
 
 
 def crop_pointcloud(points: np.ndarray, min_bounds: np.ndarray, max_bounds: np.ndarray):
-    within_bounds = np.all((points >= min_bounds) & (points <= max_bounds), axis=1)
-    return points[within_bounds]
+    mask = (points[:, 0] > min_bounds[0]) & (points[:, 1] > min_bounds[1]) & (points[:, 2] > min_bounds[2])
+    mask &= (points[:, 0] < max_bounds[0]) & (points[:, 1] < max_bounds[1]) & (points[:, 2] < max_bounds[2])
+    return points[mask]
 
 
 def transform_point_cloud(points, transform_matrix):
@@ -72,6 +72,7 @@ class PointCloudFusion:
         vox_size = (self.max_bounds - self.min_bounds) / voxel_grid_shape
         assert np.all(np.isclose(vox_size, vox_size[0]))
         self.voxel_size: float = float(vox_size[0])
+        self.grid_dimensions = voxel_grid_shape
 
         self.original_pcds = []
         self._is_transformed = False
@@ -167,7 +168,7 @@ class PointCloudFusion:
 
     def voxelize(self, points: np.ndarray):
         grid, indices = pointcloud_to_voxel_grid(points, voxel_size=self.voxel_size, min_bounds=self.min_bounds,
-                                                 max_bounds=self.max_bounds)
+                                                 max_bounds=self.max_bounds, grid_dimensions=self.grid_dimensions)
         return grid, indices
 
     def crop(self, points: np.ndarray):
