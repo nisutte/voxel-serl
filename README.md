@@ -1,5 +1,14 @@
-# Voxel SERL
+# Voxel SERL - real-world reinforcement learning in the context of vacuum gripping
 
+**Webpage: [nisutte.github.io](https://nisutte.github.io/)** \
+**Paper: [arxiv.org/abs/2503.02405](https://arxiv.org/abs/2503.02405)**
+
+<p style="display: flex; align-items: center;">
+  <img src="./docs/images/box_front.jpg" height="250pt" style="margin-right: 20pt"/>
+  <img src="./docs/images/Voxel_grid_example_slim.png" height="180pt"/>
+</p>
+
+Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl] implementation)  implementation by incorporating additional modalities into the reinforcement learning pipeline. It utilizes 3D spatial perception to improve the robustness of real-world vacuum gripping.
 ## Contributions
 
 | Code Directory                                                                                             | Description                                |
@@ -11,7 +20,7 @@
 
 ## Quick start guide for box picking with a UR5 robot arm
 
-### Without cameras (TODO modify the bash files)
+### Without cameras
 
 1. Follow the installation in the official [SERL repo](https://github.com/rail-berkeley/serl).
 2. Check [envs](https://github.com/nisutte/voxel-serl/blob/develop/serl_robot_infra/ur_env/envs) and either use the provided [box_picking_env](https://github.com/nisutte/voxel-serl/blob/develop/serl_robot_infra/ur_env/envs/camera_env/box_picking_camera_env.py) or set up a new environment using the one mentioned as a template. (New environments have to be registered [here](https://github.com/nisutte/voxel-serl/blob/develop/serl_robot_infra/ur_env/__init__.py))
@@ -26,7 +35,3 @@
   <img src="./docs/images/trajectory%20timeline.png" width="50%"/>
 </p>
 
-## TODO's
-- [ ] improve readme
-- [ ] add paper link
-- [ ] document how to use in a real setting
