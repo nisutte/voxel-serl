@@ -3,6 +3,7 @@ import numpy as np
 from agentlace import action
 
 from ur_env.spacemouse.spacemouse_expert import SpaceMouseExpert
+from ur_env.spacemouse.fake_spacemouse import FakeSpaceMouseExpert
 import time
 from scipy.spatial.transform import Rotation as R
 
@@ -18,7 +19,12 @@ class SpacemouseIntervention(gym.ActionWrapper):
 
         self.gripper_enabled = True
 
-        self.expert = SpaceMouseExpert()
+        try:
+            self.expert = SpaceMouseExpert()
+        except Exception as e:
+            self.expert = FakeSpaceMouseExpert()
+            print(f"openend fake SpacemouseExpert since: {e}")
+
         self.last_intervene = 0
         self.left = np.array([False] * gripper_action_span, dtype=np.bool_)
         self.right = self.left.copy()
