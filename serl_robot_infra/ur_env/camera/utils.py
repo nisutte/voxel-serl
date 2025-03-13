@@ -35,12 +35,19 @@ def finetune_pointcloud_fusion(pc1: np.ndarray, pc2: np.ndarray):
 
 def pointcloud_to_voxel_grid(points: np.ndarray, voxel_size: float, min_bounds: np.ndarray, max_bounds: np.ndarray, grid_dimensions: np.ndarray):
     points_filtered = crop_pointcloud(points, min_bounds, max_bounds)
+    voxel_indices = ((points_filtered[:, :3] - min_bounds) / voxel_size).astype(np.uint8)
+    voxel_grid = None
 
-    voxel_indices = ((points_filtered - min_bounds) / voxel_size).astype(np.uint8)
-    voxel_grid = np.zeros(grid_dimensions, dtype=np.bool_)
-    voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2]] = True
+    if points.shape[1] == 3:    # uncolored
+        voxel_grid = np.zeros(grid_dimensions, dtype=np.bool_)
+        voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2]] = True
 
-    return voxel_grid, voxel_indices
+    if points.shape[1] == 6:
+        voxel_grid = np.zeros(np.concatenate((grid_dimensions, [3])), dtype=np.uint8)
+        voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2], :] = points_filtered[:, 3:]  # color
+
+    print(voxel_grid.shape, voxel_indices.shape, points_filtered.shape)
+    return voxel_grid, np.concatenate((voxel_indices, points_filtered[:, 3:]), axis=-1)
 
 
 def crop_pointcloud(points: np.ndarray, min_bounds: np.ndarray, max_bounds: np.ndarray):
@@ -50,13 +57,16 @@ def crop_pointcloud(points: np.ndarray, min_bounds: np.ndarray, max_bounds: np.n
 
 
 def transform_point_cloud(points, transform_matrix):
-    if points.shape[1] == 3:
-        points = np.hstack([points, np.ones((points.shape[0], 1))])
+    if points.shape[1] == 3 or points.shape[1] == 6:
+        points = np.hstack([points[:, :3], np.ones((points.shape[0], 1)), points[:, 3:]])
 
-    transformed_points = np.dot(points, transform_matrix.T)
+    transformed_points = np.dot(points[:, :4], transform_matrix.T)
 
     if transformed_points.shape[1] == 4:
         transformed_points = transformed_points[:, :3]
+
+    if points.shape[1] > 4:    # add color if there
+        transformed_points = np.concatenate((transformed_points, points[:, -3:]), axis=-1)
 
     return transformed_points
 

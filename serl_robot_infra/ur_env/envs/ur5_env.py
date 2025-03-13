@@ -62,7 +62,9 @@ class PointCloudDisplayer:
     def display(self, points):
         self.pc.clear()
         # MASSIVE! speed up if float64 is used, see: https://github.com/isl-org/Open3D/issues/1045
-        self.pc.points = o3d.utility.Vector3dVector(points.astype(np.float64) / 1000.)
+        self.pc.points = o3d.utility.Vector3dVector(points[:, :3].astype(np.float64) / 1000.)
+        if points.shape[1] == 6:
+            self.pc.colors = o3d.utility.Vector3dVector(points[:, 3:].astype(np.float64) / 255.)
         self.window.clear_geometries()
         self.window.add_geometry(self.pc)
         # self.window.add_geometry(self.coord_frame)
@@ -199,7 +201,11 @@ class UR5Env(gym.Env):
             image_space_definition["wrist_pointcloud"] = gym.spaces.Box(
                 0, 255, shape=(50, 50, 40), dtype=np.uint8
             )
-        if camera_mode is not None and camera_mode not in ["rgb", "both", "depth", "pointcloud", "grey"]:
+        if camera_mode in ["rgb_pointcloud"]:
+            image_space_definition["wrist_pointcloud"] = gym.spaces.Box(
+                0, 255, shape=(50, 50, 40, 3), dtype=np.uint8
+            )
+        if camera_mode is not None and camera_mode not in ["rgb", "both", "depth", "pointcloud", "rgb_pointcloud", "grey"]:
             raise NotImplementedError(f"camera mode {camera_mode} not implemented")
 
         state_space = gym.spaces.Dict(
@@ -216,7 +222,7 @@ class UR5Env(gym.Env):
         )
 
         obs_space_definition = {"state": state_space}
-        if self.camera_mode in ["rgb", "both", "depth", "pointcloud", "grey"]:
+        if self.camera_mode in ["rgb", "both", "depth", "pointcloud", "rgb_pointcloud", "grey"]:
             obs_space_definition["images"] = gym.spaces.Dict(
                 image_space_definition
             )
@@ -245,7 +251,7 @@ class UR5Env(gym.Env):
         if self.camera_mode is not None:
             self.init_cameras(config.REALSENSE_CAMERAS)
             self.img_queue = queue.Queue()
-            if self.camera_mode in ["pointcloud"]:
+            if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
                 self.displayer = PointCloudDisplayer()  # o3d displayer cannot be threaded :/
             else:
                 self.displayer = ImageDisplayer(self.img_queue)
@@ -256,8 +262,11 @@ class UR5Env(gym.Env):
             time.sleep(0.1)
         print("[RIC] Controller has started and is ready!")
 
-        if self.camera_mode in ["pointcloud"]:
+        # TODO make one for rgb pointcloud
+        if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
             voxel_grid_shape = np.array(self.observation_space["images"]["wrist_pointcloud"].shape)
+            if voxel_grid_shape.shape[0] == 4:
+                voxel_grid_shape = voxel_grid_shape[:3]
             # voxel_grid_shape[-1] *= 8     # do not use compacting for now
             # voxel_grid_shape *= 2
             print(f"pointcloud resolution set to: {voxel_grid_shape}")
@@ -480,8 +489,9 @@ class UR5Env(gym.Env):
             rgb = self.camera_mode in ["rgb", "both", "grey"]
             depth = self.camera_mode in ["depth", "both"]
             pointcloud = self.camera_mode in ["pointcloud"]
+            rgb_pc = self.camera_mode in ["rgb_pointcloud"]
             cap = VideoCapture(
-                RSCapture(name=cam_name, serial_number=cam_serial, rgb=rgb, depth=depth, pointcloud=pointcloud)
+                RSCapture(name=cam_name, serial_number=cam_serial, rgb=rgb, depth=depth, pointcloud=pointcloud, rgb_pointcloud=rgb_pc)
             )
             self.cap[cam_name] = cap
 
@@ -498,7 +508,7 @@ class UR5Env(gym.Env):
         """Get images from the realsense cameras."""
         images = {}
         display_images = {}
-        if self.camera_mode == "pointcloud":
+        if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
             self.pointcloud_fusion.clear()
         for key, cap in self.cap.items():
             try:
@@ -537,7 +547,7 @@ class UR5Env(gym.Env):
                     display_images[depth_key] = cv2.applyColorMap(resized, cv2.COLORMAP_JET)
                     display_images[depth_key + "_full"] = cv2.applyColorMap(cropped_depth, cv2.COLORMAP_JET)
 
-                if self.camera_mode in ["pointcloud"]:
+                if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
                     pointcloud = image
                     self.pointcloud_fusion.append(pointcloud)
 
@@ -546,14 +556,9 @@ class UR5Env(gym.Env):
                 self.init_cameras(self.config.REALSENSE_CAMERAS)
                 return self.get_image()
 
-        if self.camera_mode in ["pointcloud"]:
+        if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
             voxel_grid, voxel_indices = self.pointcloud_fusion.get_pointcloud_representation(voxelize=True)
-
-            # downsample on 2x2x2 grid with sum of points (8 as max)
-            # vs = self.observation_space["images"]["wrist_pointcloud"].shape
-            # voxel_grid = np.sum(np.reshape(voxel_grid, (vs[0], 2, vs[1], 2, vs[2], 2)), axis=(1, 3, 5))
             images["wrist_pointcloud"] = voxel_grid.astype(np.uint8)
-
             self.displayer.display(voxel_indices)
 
         # self.recording_frames.append(
