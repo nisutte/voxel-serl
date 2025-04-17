@@ -10,7 +10,7 @@ from rtde_control import RTDEControlInterface
 from rtde_receive import RTDEReceiveInterface
 
 from ur_env.utils.vacuum_gripper import VacuumGripper
-from ur_env.utils.rotations import rotvec_2_quat, quat_2_rotvec, pose2rotvec, pose2quat
+from ur_env.utils.rotations import rotvec_2_quat, quat_2_rotvec, pose_2_rotvec, pose_2_quat
 
 np.set_printoptions(precision=4, suppress=True)
 
@@ -190,7 +190,7 @@ class UrImpedanceController(threading.Thread):
         grip_status = 1. if pressure > 0 else grip_status
         pressure /= 98.  # pressure between [0, 1]
         with self.lock:
-            self.curr_pos[:] = pose2quat(pos)
+            self.curr_pos[:] = pose_2_quat(pos)
             self.curr_vel[:] = vel
             self.curr_Q[:] = Q
             self.curr_Qd[:] = Qd
@@ -252,8 +252,8 @@ class UrImpedanceController(threading.Thread):
         self.ur_control.forceModeStop()
 
         print("[RIC] plotting")
-        real_pos = np.array([pose2rotvec(q) for q in self.hist_data[0]])
-        target_pos = np.array([pose2rotvec(q) for q in self.hist_data[1]])
+        real_pos = np.array([pose_2_rotvec(q) for q in self.hist_data[0]])
+        target_pos = np.array([pose_2_rotvec(q) for q in self.hist_data[1]])
 
         plt.figure()
         fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(12, 8), dpi=200)

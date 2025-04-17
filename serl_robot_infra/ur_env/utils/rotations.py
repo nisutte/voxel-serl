@@ -26,9 +26,9 @@ def euler_2_quat(euler):
     return R.from_euler(euler).as_quat()
 
 
-def pose2quat(rotvec_pose) -> np.ndarray:
+def pose_2_quat(rotvec_pose) -> np.ndarray:
     return np.concatenate((rotvec_pose[:3], rotvec_2_quat(rotvec_pose[3:])))
 
 
-def pose2rotvec(quat_pose) -> np.ndarray:
+def pose_2_rotvec(quat_pose) -> np.ndarray:
     return np.concatenate((quat_pose[:3], quat_2_rotvec(quat_pose[3:])))

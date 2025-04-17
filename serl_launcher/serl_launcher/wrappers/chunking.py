@@ -1,8 +1,7 @@
 from collections import deque
 from typing import Optional
 
-import gym
-import gym.spaces
+import gymnasium as gym
 import jax
 import numpy as np
 
@@ -23,8 +22,8 @@ def space_stack(space: gym.Space, repeat: int):
         )
     elif isinstance(space, gym.spaces.Discrete):
         return gym.spaces.MultiDiscrete([space.n] * repeat)
-    elif isinstance(space, gym.spaces.Dict):
-        return gym.spaces.Dict(
+    elif isinstance(space, gym.spaces.dict.Dict):
+        return gym.spaces.dict.Dict(
             {k: space_stack(v, repeat) for k, v in space.spaces.items()}
         )
     else:
