@@ -1,0 +1,21 @@
+export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
+export XLA_PYTHON_CLIENT_MEM_FRACTION=.1 && \
+python /home/nico/real-world-rl/serl/examples/box_picking_drq/drq_policy.py "$@" \
+    --actor \
+    --env box_picking_color_env \
+    --exp_name="voxnet P color" \
+    --camera_mode rgb_pointcloud \
+    --max_traj_length 100 \
+    --seed 1 \
+    --max_steps 20000 \
+    --random_steps 0 \
+    --training_starts 400 \
+    --utd_ratio 8 \
+    --batch_size 64 \
+    --eval_period 0 \
+    \
+    --encoder_type voxnet-pretrained-color \
+    --state_mask no_ForceTorque \
+    --encoder_bottleneck_dim 128 \
+#    --enable_obs_rotation_wrapper \
+#    --debug

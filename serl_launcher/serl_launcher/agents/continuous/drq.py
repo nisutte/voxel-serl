@@ -257,13 +257,14 @@ class DrQAgent(SACAgent):
                 )
                 for image_key in image_keys
             }
-        elif encoder_type == "voxnet" or encoder_type == "voxnet-pretrained":
+        elif encoder_type in ["voxnet", "voxnet-pretrained", "voxnet-color", "voxnet-pretrained-color"]:
             encoders = {
                 image_key: VoxNet(
                     bottleneck_dim=encoder_kwargs["bottleneck_dim"],
                     use_conv_bias=True,
                     final_activation=nn.tanh,
-                    pretrained=encoder_type == "voxnet-pretrained",
+                    pretrained= "pretrained" in encoder_type,
+                    use_color="color" in encoder_type,
                 )
                 for image_key in image_keys
             }
@@ -334,6 +335,11 @@ class DrQAgent(SACAgent):
             from serl_launcher.utils.train_utils import load_pretrained_VoxNet_params
 
             agent = load_pretrained_VoxNet_params(agent, image_keys)
+
+        if encoder_type == "voxnet-pretrained-color":
+            from serl_launcher.utils.train_utils import load_pretrained_VoxNet_params
+
+            agent = load_pretrained_VoxNet_params(agent, image_keys, color=True)
 
         return agent
 

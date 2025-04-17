@@ -72,8 +72,8 @@ class UR5CameraConfigFinal(DefaultEnvConfig):  # config for 10 boxes
     RANDOM_RESET = True
     RANDOM_XY_RANGE = (0.0,)
     RANDOM_ROT_RANGE = (0.04,)
-    ABS_POSE_LIMIT_HIGH = np.array([0.6, 0.1, 0.25, 0.05, 0.05, 0.2])
-    ABS_POSE_LIMIT_LOW = np.array([-0.7, -0.85, -0.006, -0.05, -0.05, -0.2])
+    ABS_POSE_LIMIT_HIGH = np.array([0.6, 0.1, 0.25, 0.2, 0.05, 0.2])
+    ABS_POSE_LIMIT_LOW = np.array([-0.7, -0.85, -0.006, -0.2, -0.05, -0.2])
     ABS_POSE_RANGE_LIMITS = np.array([0.36, 0.83])
     ACTION_SCALE = np.array([0.02, 0.1, 1.], dtype=np.float32)
 
@@ -92,7 +92,7 @@ class UR5CameraConfigFinal(DefaultEnvConfig):  # config for 10 boxes
     }
 
 class UR5CameraConfigDemo(UR5CameraConfigFinal):
-    RESET_Q = np.array([[0., -np.pi/2., np.pi/2., -np.pi/2., -np.pi/2., 0.]])
+    RESET_Q = np.array([[0., -np.pi / 2., np.pi / 2., -np.pi / 2., -np.pi / 2., 0.]])
     ABS_POSE_LIMIT_HIGH = np.array([1., 1., 1., 0.1, 0.1, 0.3])
     ABS_POSE_LIMIT_LOW = np.array([-1., -1., -0.004, -0.1, -0.1, -0.3])
 
@@ -107,7 +107,8 @@ class UR5CameraConfigFinalTests(UR5CameraConfigFinal):
     RESET_Q = np.array([
         # [0.0421, -1.3161, 1.9649, -2.2358, -1.3221, -1.5237 + 0 * np.pi / 2.],  # schräge position
         # [0.1882, -1.2777, 1.9699, -2.2983, -1.5567, -1.384 + 2 * np.pi / 2],  # gerade pos
-        [1.4843, -1.1314, 1.6531, -2.0676, -1.6014, 1.6402]
+        # [1.4843, -1.1314, 1.6531, -2.0676, -1.6014, 1.6402]
+        [0.4691, -1.3288, 1.9659, -2.2276, -1.5962, 0.3519]
     ])
 
 
@@ -126,3 +127,28 @@ class UR5CameraConfigFinalEvaluation(UR5CameraConfigFinal):
         [1.717, -1.1379, 1.7179, -2.4872, -1.4362, 2.5804],
         [2.2614, - 1.4378, 2.145, - 2.5039, - 1.7649, 2.2541],
     ])
+
+
+class UR5VoxelConfig(UR5CameraConfigFinal):
+    RESET_Q = np.array([
+        [1.4665, -0.8476, 1.2612, -1.9817, -1.5623, -0.0916],
+        [1.1021, -0.7136, 1.0127, -1.8756, -1.5689, -0.4738],
+        [0.966, -1.3074, 2.0641, -2.3285, -1.5542, -2.1304],
+        [0.696, -0.9965, 1.5125, -2.0854, -1.5655, -0.8484],
+        [0.2125, -1.2685, 1.8644, -2.168, -1.5703, -1.3682],
+    ])
+
+    ACTION_SCALE = np.array([0.01, 0.05, 1.], dtype=np.float32)
+    RANDOM_RESET = True
+    CONTROLLER_HZ = 50      # for the c++ wrapper controller
+    RANDOM_XY_RANGE = (0.02,)
+    RANDOM_Z_RANGE = (0.02)
+    RANDOM_ROT_RANGE = (0.02,)
+
+    ABS_POSE_LIMIT_HIGH = np.array([0.6, 0.1, 0.25, 0.05, 0.05, 0.2])
+    ABS_POSE_LIMIT_LOW = np.array([-0.7, -0.85, -0.006, -0.05, -0.05, -0.2])
+    ABS_POSE_RANGE_LIMITS = np.array([0.4, 0.78])
+
+    REALSENSE_CAMERAS = {
+        "wrist": "218622270808",
+    }

@@ -31,3 +31,9 @@ register(
     max_episode_steps=100,
 )
 
+register(
+    id="box_picking_color_env",
+    entry_point="ur_env.envs.camera_env:UR5VoxelEnvColor",
+    max_episode_steps=100,
+)
+

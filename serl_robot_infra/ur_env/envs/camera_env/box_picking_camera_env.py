@@ -2,7 +2,7 @@ import numpy as np
 from typing import Tuple
 
 from ur_env.envs.ur5_env import UR5Env
-from ur_env.envs.camera_env.config import UR5CameraConfigFinal, UR5CameraConfigFinalTests, UR5CameraConfigFinalEvaluation, UR5CameraConfigDemo
+from ur_env.envs.camera_env.config import UR5CameraConfigFinal, UR5CameraConfigFinalTests, UR5CameraConfigFinalEvaluation, UR5CameraConfigDemo, UR5VoxelConfig
 
 
 class UR5CameraEnv(UR5Env):
@@ -71,3 +71,7 @@ class UR5CameraEnvEval(UR5CameraEnv):
 class UR5CameraEnvDemo(UR5CameraEnv):
     def __init__(self, **kwargs):
         super().__init__(**kwargs, load_config=False, config=UR5CameraConfigDemo)
+
+class UR5VoxelEnvColor(UR5CameraEnv):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs, load_config=False, config=UR5VoxelConfig)
