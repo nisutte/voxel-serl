@@ -149,18 +149,32 @@ def batched_random_crop(img, rng, *, padding, num_batch_dims: int = 1):
     img = jnp.reshape(img, original_shape)
     return img
 
-
 def random_shift_3d(img, rng, *, padding):
-    crop_from = jax.random.randint(rng, (3,), 0, 2 * padding + 1)
-    padded_img = jnp.pad(
-        img,
-        (
-            (padding, padding),
-            (padding, padding),
-            (padding, padding),
-        ),
-        mode="constant"
-    )
+    crop_from = jax.random.randint(rng, (img.ndim,), 0, 2 * padding + 1)
+    if img.ndim == 3:       # (x, y, z) boolean
+        padded_img = jnp.pad(
+            img,
+            (
+                (padding, padding),
+                (padding, padding),
+                (padding, padding),
+            ),
+            mode="constant"
+        )
+    elif img.ndim == 4:     # (x y, z, c) color
+        crop_from = crop_from.at[-1].set(0)  # no shift in color dim0
+        padded_img = jnp.pad(
+            img,
+            (
+                (padding, padding),
+                (padding, padding),
+                (padding, padding),
+                (0, 0),
+            ),
+            mode="constant"
+        )
+    else:
+        raise ValueError("Input must be either 3D or 4D.")
     return jax.lax.dynamic_slice(padded_img, crop_from, img.shape)
 
 
@@ -169,6 +183,7 @@ def batched_random_shift_voxel(img, rng, *, padding, num_batch_dims: int = 1):
     original_shape = img.shape
     img = jnp.reshape(img, (-1, *img.shape[num_batch_dims:]))
     # shape (B, B2, X, Y, Z)
+    # or shape (B, B2, X, Y, Z, C)
 
     rngs = jax.random.split(rng, img.shape[0])
     img = jax.vmap(

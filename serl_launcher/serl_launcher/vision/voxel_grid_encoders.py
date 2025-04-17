@@ -96,6 +96,7 @@ class VoxNet(nn.Module):
     final_activation: Callable[[jnp.ndarray], jnp.ndarray] | str = nn.tanh
     pretrained: bool = False
     scale_factor: float = 1.
+    use_color: bool = False         # for color voxels
 
     @nn.compact
     def __call__(
@@ -105,11 +106,17 @@ class VoxNet(nn.Module):
             train: bool = True,
     ):
         # observations has shape (B, X, Y, Z) (boolean for now)
-        no_batch_dim = len(observations.shape) < 4
+        # with color --> (B, X, Y, Z, (O + C))  occupancy + color
+
+        no_batch_dim = len(observations.shape) < 4 + int(self.use_color)
         if no_batch_dim:
             observations = observations[None]
 
         observations = observations.astype(jnp.float32)[..., None] / self.scale_factor  # add conv channel
+        if self.use_color:
+            observations = observations / 255.
+            observations = observations[..., 0]
+            # observations = jnp.reshape(observations, (1, 50, 50, 40, 4))
 
         conv3d = partial(nn.Conv, kernel_init=nn.initializers.xavier_normal(), use_bias=self.use_conv_bias,
                          padding="valid", bias_init=nn.zeros_init())
@@ -139,8 +146,8 @@ class VoxNet(nn.Module):
         )(x)
         x = max_pool(x)
 
-        if self.pretrained:
-            x = jax.lax.stop_gradient(x)  # unfortunately also cuts gradients of the LayerNorm above
+        if self.pretrained and not self.use_color:      # do not stop the gradient if we use color
+            x = jax.lax.stop_gradient(x)
 
         x = nn.LayerNorm()(x)
         x = l_relu(x)  # shape (B, (X-4)/2, (Y-4)/2, (Z-4)/2, F)
@@ -156,7 +163,6 @@ class VoxNet(nn.Module):
 
         # x = SpatialSoftArgmax3D(10, 10, 8, 64)(x)
         # jax.debug.print("ssam {}", x)
-
         # reshape and dense (preserve batch dim)
         x = jnp.reshape(x, (1 if no_batch_dim else x.shape[0], -1))
         if self.bottleneck_dim is not None:

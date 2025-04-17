@@ -1,12 +1,12 @@
 import copy
 from typing import Iterable, Optional, Tuple
 
-import gym
+import gymnasium as gym
 import numpy as np
 from serl_launcher.data.dataset import DatasetDict, _sample
 from serl_launcher.data.replay_buffer import ReplayBuffer
 from flax.core import frozen_dict
-from gym.spaces import Box
+from gymnasium.spaces import Box
 
 
 class MemoryEfficientReplayBuffer(ReplayBuffer):
@@ -157,7 +157,11 @@ class MemoryEfficientReplayBuffer(ReplayBuffer):
             )
             obs_pixels = obs_pixels[indx - self._num_stack]
             # transpose from (B, H, W, C, T) to (B, T, H, W, C) to follow jaxrl_m convention
-            obs_pixels = obs_pixels.transpose((0, 4, 1, 2, 3))
+            if len(obs_pixels.shape) > 5:
+                # for color voxel from (B, X, Y, Z, C, T) to (B, T, X, Y, Z, C)
+                obs_pixels = obs_pixels.transpose((0, 5, 1, 2, 3, 4))
+            else:
+                obs_pixels = obs_pixels.transpose((0, 4, 1, 2, 3))
 
             if pack_obs_and_next_obs:
                 batch["observations"][pixel_key] = obs_pixels

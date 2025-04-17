@@ -132,9 +132,8 @@ def load_resnet10_params(agent, image_keys=("image",), public=True):
     return agent
 
 
-def load_pretrained_VoxNet_params(agent, image_keys=("pointcloud",)):
+def load_pretrained_VoxNet_params(agent, image_keys=("pointcloud",), color=False):
     ckpt = jnp.load("/home/nico/Downloads/c-11.npz")
-
     new_params = agent.state.params
 
     for image_key in image_keys:
@@ -150,8 +149,15 @@ def load_pretrained_VoxNet_params(agent, image_keys=("pointcloud",)):
         for key, weights in to_replace.items():
             if key in new_encoder_params:
                 shape = new_encoder_params[key]["kernel"].shape
-                new_encoder_params[key]["kernel"] = new_encoder_params[key]["kernel"].at[:].set(
-                    ckpt[weights + "kernel:0"][..., :shape[-1]])
+                if key == "conv_5x5x5" and color:           # only replace first entry of occupancy + color dimension
+                    print("replacing it the hard way")
+                    conv5_params = new_encoder_params[key]["kernel"].at[:].get().copy()
+                    conv5_params = conv5_params.at[..., 0, :].set(ckpt[weights + "kernel:0"][..., 0, :shape[-1]])
+                    new_encoder_params[key]["kernel"] = new_encoder_params[key]["kernel"].at[:].set(conv5_params)
+                else:
+                    new_encoder_params[key]["kernel"] = new_encoder_params[key]["kernel"].at[:].set(
+                        ckpt[weights + "kernel:0"][..., :shape[-1]])
+
                 new_encoder_params[key]["bias"] = new_encoder_params[key]["bias"].at[:].set(
                     ckpt[weights + "bias:0"][:shape[-1]])
                 replaced.append(f"{key}:{shape}")
