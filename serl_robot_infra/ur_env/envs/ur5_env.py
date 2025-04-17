@@ -22,6 +22,7 @@ from ur_env.camera.rs_capture import RSCapture
 from ur_env.camera.utils import PointCloudFusion, CalibrationTread
 
 from robot_controllers.ur5_controller import UrImpedanceController
+from robot_controllers.controller_client import ControllerClientWithGripper
 
 
 class ImageDisplayer(threading.Thread):
@@ -86,6 +87,7 @@ class DefaultEnvConfig:
     RESET_Q = np.zeros((6,))
     RANDOM_RESET = (False,)
     RANDOM_XY_RANGE = (0.0,)
+    RANDOM_Z_RANGE = (0.0)
     RANDOM_ROT_RANGE = (0.0,)
     ABS_POSE_LIMIT_HIGH = np.zeros((6,))
     ABS_POSE_LIMIT_LOW = np.zeros((6,))
@@ -139,6 +141,7 @@ class UR5Env(gym.Env):
         self.gripper_state = np.zeros((2,), dtype=np.float32)
         self.random_reset = config.RANDOM_RESET
         self.random_xy_range = config.RANDOM_XY_RANGE
+        self.random_z_range = config.RANDOM_Z_RANGE
         self.random_rot_range = config.RANDOM_ROT_RANGE
         self.hz = hz
         np.random.seed(0)        # fix seed for fixed (random) initial rotations
@@ -203,7 +206,7 @@ class UR5Env(gym.Env):
             )
         if camera_mode in ["rgb_pointcloud"]:
             image_space_definition["wrist_pointcloud"] = gym.spaces.Box(
-                0, 255, shape=(50, 50, 40, 3), dtype=np.uint8
+                0, 255, shape=(50, 50, 40, 4), dtype=np.uint8
             )
         if camera_mode is not None and camera_mode not in ["rgb", "both", "depth", "pointcloud", "rgb_pointcloud", "grey"]:
             raise NotImplementedError(f"camera mode {camera_mode} not implemented")
@@ -221,7 +224,9 @@ class UR5Env(gym.Env):
             }
         )
 
-        obs_space_definition = {"state": state_space}
+        obs_space_definition = gym.spaces.Dict(
+            {"state": state_space}
+        )
         if self.camera_mode in ["rgb", "both", "depth", "pointcloud", "rgb_pointcloud", "grey"]:
             obs_space_definition["images"] = gym.spaces.Dict(
                 image_space_definition
@@ -237,14 +242,9 @@ class UR5Env(gym.Env):
             print("[UR5Env] is fake!")
             return
 
-        self.controller = UrImpedanceController(
+        self.controller = ControllerClientWithGripper(
             robot_ip=config.ROBOT_IP,
-            frequency=config.CONTROLLER_HZ,
-            kp=15000,
-            kd=3300,
-            config=config,
-            verbose=False,
-            plot=False,
+            config=config
         )
         self.controller.start()  # start Thread
 
@@ -354,7 +354,7 @@ class UR5Env(gym.Env):
         if self.resetQ.shape == (1, 6):
             reset_Q[:] = self.resetQ.copy()
         elif self.resetQ.shape[1] == 6 and self.resetQ.shape[0] > 1:
-            reset_Q[:] = self.resetQ[0, :].copy()  # make random guess
+            reset_Q[:] = self.resetQ[0, :].copy()
             self.resetQ[:] = np.roll(self.resetQ, -1, axis=0)  # roll one (not random)
         else:
             raise ValueError(f"invalid resetQ dimension: {self.resetQ.shape}")
@@ -365,7 +365,7 @@ class UR5Env(gym.Env):
             time.sleep(0.1)  # wait for the reset operation
 
         self._update_currpos()
-        reset_pose = self.controller.get_target_pos()
+        reset_pose = np.asarray(self.controller.get_state()["pos"])
 
         if self.random_reset:  # randomize reset position in xy plane
             reset_shift = np.random.uniform(np.negative(self.random_xy_range), self.random_xy_range, (2,))
@@ -379,7 +379,7 @@ class UR5Env(gym.Env):
 
             self.curr_reset_pose[:] = reset_pose
 
-            self.controller.set_target_pos(reset_pose)  # random movement after resetting
+            self.controller.set_target_pose(reset_pose)  # random movement after resetting
             time.sleep(0.1)
             while self.controller.is_moving():
                 time.sleep(0.1)
@@ -625,18 +625,18 @@ class UR5Env(gym.Env):
         except Exception as e:
             print(f"Failed to close cameras: {e}")
 
-    def _send_pos_command(self, target_pos: np.ndarray):
+    def _send_pos_command(self, target_pose: np.ndarray):
         """Internal function to send force command to the robot."""
-        self.controller.set_target_pos(target_pos=target_pos)
+        self.controller.set_target_pose(target_pose=target_pose)
 
     def _send_gripper_command(self, gripper_pos: np.ndarray):
         self.controller.set_gripper_pos(gripper_pos)
 
     def _send_reset_command(self, reset_Q: np.ndarray):
-        self.controller.set_reset_Q(reset_Q)
+        self.controller.set_reset_angles(reset_Q)
 
-    def _send_taskspace_command(self, target_pos):
-        self.controller.set_reset_pose(target_pos)
+    def _send_taskspace_command(self, target_pose):
+        self.controller.set_target_pose(target_pose)
 
     def _update_currpos(self):
         """
@@ -646,8 +646,8 @@ class UR5Env(gym.Env):
 
         self.curr_pos[:] = state['pos']
         self.curr_vel[:] = state['vel']
-        self.curr_force[:] = state['force']
-        self.curr_torque[:] = state['torque']
+        self.curr_force[:] = state['force'][:3]
+        self.curr_torque[:] = state['force'][3:]
         self.curr_Q[:] = state['Q']
         self.curr_Qd[:] = state['Qd']
         self.gripper_state[:] = state['gripper']
