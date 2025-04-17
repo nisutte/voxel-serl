@@ -43,10 +43,10 @@ def pointcloud_to_voxel_grid(points: np.ndarray, voxel_size: float, min_bounds: 
         voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2]] = True
 
     if points.shape[1] == 6:
-        voxel_grid = np.zeros(np.concatenate((grid_dimensions, [3])), dtype=np.uint8)
-        voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2], :] = points_filtered[:, 3:]  # color
+        voxel_grid = np.zeros(np.concatenate((grid_dimensions, [4])), dtype=np.uint8)
+        voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2], 0] = 255  # occupancy
+        voxel_grid[voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2], 1:] = points_filtered[:, 3:]  # color
 
-    print(voxel_grid.shape, voxel_indices.shape, points_filtered.shape)
     return voxel_grid, np.concatenate((voxel_indices, points_filtered[:, 3:]), axis=-1)
 
 
@@ -199,7 +199,7 @@ class PointCloudFusion:
 
     def get_first(self, voxelize=True):
         if not self._is_transformed:
-            self.pcd1 = transform_point_cloud(self.pcd1, transform_matrix=self.t1)
+            self.pcd1 = transform_point_cloud(self.pcd1, transform_matrix=self.t2)      # t2 only temporary
         return self.voxelize(self.pcd1) if voxelize else self.crop(self.pcd1)
 
     def get_original_pcds(self):
