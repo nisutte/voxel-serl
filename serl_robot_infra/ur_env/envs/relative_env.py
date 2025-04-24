@@ -4,9 +4,10 @@ import numpy as np
 from gym import Env
 from franka_env.utils.transformations import (
     construct_homogeneous_matrix,
-    construct_rotation_matrix
+    construct_rotation_matrix,
 )
 
+from ur_env.utils.rotations import rotate_rotvec
 
 class RelativeFrame(gym.Wrapper):
     """
@@ -79,9 +80,9 @@ class RelativeFrame(gym.Wrapper):
         using the rotation and homogeneous matrix
         """
         obs["state"]["tcp_vel"][:3] = self.rotation_matrix_reset.transpose() @ obs["state"]["tcp_vel"][:3]
-        obs["state"]["tcp_vel"][3:6] = self.rotation_matrix_reset.transpose() @ obs["state"]["tcp_vel"][3:6]
+        obs["state"]["tcp_vel"][3:6] = rotate_rotvec(obs["state"]["tcp_vel"][3:6], self.rotation_matrix.transpose())
         obs["state"]["tcp_force"] = self.rotation_matrix.transpose() @ obs["state"]["tcp_force"]
-        obs["state"]["tcp_torque"] = self.rotation_matrix.transpose() @ obs["state"]["tcp_torque"]
+        obs["state"]["tcp_torque"] = rotate_rotvec(obs["state"]["tcp_torque"], self.rotation_matrix.transpose())
 
         if self.include_relative_pose:
             T_b_o = construct_homogeneous_matrix(obs["state"]["tcp_pose"])
@@ -101,7 +102,7 @@ class RelativeFrame(gym.Wrapper):
         """
         action = np.array(action)  # in case action is a jax read-only array
         action[:3] = self.rotation_matrix_reset @ action[:3]
-        action[3:6] = self.rotation_matrix_reset @ action[3:6]
+        action[3:6] = (R.from_matrix(self.rotation_matrix) * R.from_mrp(action[3:6])).as_mrp()
         return action
 
     def transform_action_inv(self, action: np.ndarray):
@@ -111,5 +112,5 @@ class RelativeFrame(gym.Wrapper):
         """
         action = np.array(action)
         action[:3] = self.rotation_matrix_reset.transpose() @ action[:3]
-        action[3:6] = self.rotation_matrix_reset.transpose() @ action[3:6]
+        action[3:6] = (R.from_matrix(self.rotation_matrix.transpose()) * R.from_mrp(action[3:6])).as_mrp()
         return action
