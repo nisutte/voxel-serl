@@ -33,7 +33,7 @@ from serl_launcher.utils.launcher import (
 )
 
 from serl_launcher.wrappers.serl_obs_wrappers import SerlObsWrapperNoImages
-from ur_env.envs.wrappers import SpacemouseIntervention, Quat2MrpWrapper
+from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper
 
 import ur_env
 
@@ -315,7 +315,7 @@ def main(_):
     if FLAGS.actor:
         env = SpacemouseIntervention(env)
     env = RelativeFrame(env)
-    env = Quat2MrpWrapper(env)
+    env = ToMrpWrapper(env)
     env = SerlObsWrapperNoImages(env)
     # env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
     # env = TransformReward(env, lambda r: FLAGS.reward_scale * r)

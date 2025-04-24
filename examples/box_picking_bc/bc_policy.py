@@ -28,7 +28,7 @@ from serl_launcher.data.data_store import (
 )
 from serl_launcher.wrappers.serl_obs_wrappers import SerlObsWrapperNoImages
 from serl_launcher.networks.reward_classifier import load_classifier_func
-from ur_env.envs.wrappers import SpacemouseIntervention, Quat2MrpWrapper
+from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper
 from ur_env.envs.relative_env import RelativeFrame
 from serl_launcher.utils.sampling_utils import TemporalActionEnsemble
 
@@ -84,7 +84,7 @@ def main(_):
     )
     # env = SpacemouseIntervention(env)
     env = RelativeFrame(env)
-    env = Quat2MrpWrapper(env)
+    env = ToMrpWrapper(env)
     env = SerlObsWrapperNoImages(env)
     # env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
     env = RecordEpisodeStatistics(env)

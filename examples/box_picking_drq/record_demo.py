@@ -9,7 +9,7 @@ import threading
 from pynput import keyboard
 
 from ur_env.envs.relative_env import RelativeFrame
-from ur_env.envs.wrappers import SpacemouseIntervention, Quat2MrpWrapper, ObservationRotationWrapper
+from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper, ObservationRotationWrapper
 
 from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper, ScaleObservationWrapper
 from serl_launcher.wrappers.chunking import ChunkingWrapper
@@ -32,13 +32,13 @@ def on_esc(key):
 
 
 if __name__ == "__main__":
-    env = gym.make("box_picking_camera_env",
+    env = gym.make("box_picking_color_env",
                    camera_mode="pointcloud",
                    max_episode_length=100,
                    )
     env = SpacemouseIntervention(env)
     env = RelativeFrame(env)
-    env = Quat2MrpWrapper(env)
+    env = ToMrpWrapper(env)
     env = ScaleObservationWrapper(env)
     # env = ObservationRotationWrapper(env)       # if it should be enabled
     env = SERLObsWrapper(env)
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     transitions = []
     success_count = 0
-    success_needed = 20
+    success_needed = 10
     total_count = 0
     pbar = tqdm(total=success_needed)
 

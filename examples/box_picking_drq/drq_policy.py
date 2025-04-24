@@ -40,7 +40,7 @@ from serl_launcher.data.data_store import MemoryEfficientReplayBufferDataStore
 from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper, ScaleObservationWrapper
 from serl_launcher.wrappers.observation_statistics_wrapper import ObservationStatisticsWrapper
 from ur_env.envs.relative_env import RelativeFrame
-from ur_env.envs.wrappers import SpacemouseIntervention, Quat2MrpWrapper, ObservationRotationWrapper
+from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper, ObservationRotationWrapper
 from serl_launcher.vision.data_augmentations import batched_random_rot90_state, batched_random_rot90_voxel, \
     batched_random_rot90_action
 
@@ -501,7 +501,7 @@ def main(_):
     # if FLAGS.actor:
     #     env = SpacemouseIntervention(env)
     env = RelativeFrame(env)
-    env = Quat2MrpWrapper(env)
+    env = ToMrpWrapper(env)
     env = ScaleObservationWrapper(env)  # scale obs space (after quat2mrp, but before serlobs)
     env = ObservationStatisticsWrapper(env)
     if FLAGS.enable_obs_rotation_wrapper:

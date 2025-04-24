@@ -21,7 +21,7 @@ from serl_launcher.wrappers.chunking import ChunkingWrapper
 from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper, ScaleObservationWrapper
 from serl_launcher.wrappers.observation_statistics_wrapper import ObservationStatisticsWrapper
 from ur_env.envs.relative_env import RelativeFrame
-from ur_env.envs.wrappers import Quat2MrpWrapper, ObservationRotationWrapper
+from ur_env.envs.wrappers import ToMrpWrapper, ObservationRotationWrapper
 
 import ur_env
 
@@ -44,7 +44,7 @@ def main(_):
         max_episode_length=FLAGS.max_traj_length,
     )
     env = RelativeFrame(env)
-    env = Quat2MrpWrapper(env)
+    env = ToMrpWrapper(env)
     env = ScaleObservationWrapper(env)  # scale obs space (after quat2mrp, but before serlobs)
     env = ObservationStatisticsWrapper(env)
     env = SERLObsWrapper(env)

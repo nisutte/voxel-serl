@@ -9,6 +9,9 @@ UR5 represents the orientation in axis angle representation
 def rotvec_2_quat(rotvec):
     return R.from_rotvec(rotvec).as_quat()
 
+def rotvec_2_mrp(rotvec):
+    return R.from_rotvec(rotvec).as_mrp()
+
 
 def quat_2_rotvec(quat):
     return R.from_quat(quat).as_rotvec()
@@ -32,3 +35,7 @@ def pose_2_quat(rotvec_pose) -> np.ndarray:
 
 def pose_2_rotvec(quat_pose) -> np.ndarray:
     return np.concatenate((quat_pose[:3], quat_2_rotvec(quat_pose[3:])))
+
+def rotate_rotvec(rotvec, rot_matrix):
+    return (R.from_rotvec(rotvec) * R.from_matrix(rot_matrix)).as_rotvec()
+

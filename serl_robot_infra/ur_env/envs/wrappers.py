@@ -7,7 +7,7 @@ from ur_env.spacemouse.fake_spacemouse import FakeSpaceMouseExpert
 import time
 from scipy.spatial.transform import Rotation as R
 
-from ur_env.utils.rotations import quat_2_euler, quat_2_mrp
+from ur_env.utils.rotations import quat_2_euler, quat_2_mrp, rotvec_2_mrp
 
 ROT90 = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
 ROT_GENERAL = np.array([np.eye(3), ROT90, ROT90 @ ROT90, ROT90.transpose()])
@@ -119,24 +119,29 @@ class Quat2EulerWrapper(gym.ObservationWrapper):  # not used anymore (stay away 
         return observation
 
 
-class Quat2MrpWrapper(gym.ObservationWrapper):
+class ToMrpWrapper(gym.ObservationWrapper):
     """
-    Convert the quaternion representation of the tcp pose to euler angles
+    Convert the quaternion representation of the tcp pose to mrp angles
     """
 
-    def __init__(self, env: gym.Env):
+    def __init__(self, env: gym.Env, transform_obs=True):
         super().__init__(env)
-        # from xyz + quat to xyz + euler
+        self.transform_obs = transform_obs
+        # from xyz + quat to xyz + mrp
         self.observation_space["state"]["tcp_pose"] = gym.spaces.Box(
             -np.inf, np.inf, shape=(6,)
         )
 
     def observation(self, observation):
-        # convert tcp pose from quat to euler
+        # convert tcp pose from quat to mrp
         tcp_pose = observation["state"]["tcp_pose"]
         observation["state"]["tcp_pose"] = np.concatenate(
             (tcp_pose[:3], quat_2_mrp(tcp_pose[3:]))
         )
+
+        if self.transform_obs:
+            observation["state"]["tcp_vel"][3:6] = rotvec_2_mrp(observation["state"]["tcp_vel"][3:6])
+            observation["state"]["tcp_torque"] = rotvec_2_mrp(observation["state"]["tcp_torque"])
         return observation
 
 
