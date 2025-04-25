@@ -9,7 +9,7 @@ import threading
 from pynput import keyboard
 
 from ur_env.envs.camera_env.box_picking_camera_env import UR5Env
-from ur_env.envs.dual_ur5_env import DualUR5Env
+from ur_env.envs.handover_env.box_handover_env import UR5HandoverEnv
 from ur_env.envs.relative_env import RelativeFrame, BaseFrameRotation
 from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper, ObservationRotationWrapper, \
     DualSpaceMouseIntervention
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     left_env = ScaleObservationWrapper(left_env)
     right_env = ScaleObservationWrapper(right_env)
 
-    env = DualUR5Env(
+    env = UR5HandoverEnv(
         env_left=left_env,
         env_right=right_env,
     )
