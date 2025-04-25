@@ -114,3 +114,41 @@ class RelativeFrame(gym.Wrapper):
         action[:3] = self.rotation_matrix_reset.transpose() @ action[:3]
         action[3:6] = (R.from_matrix(self.rotation_matrix.transpose()) * R.from_mrp(action[3:6])).as_mrp()
         return action
+
+
+class BaseFrameRotation(gym.Wrapper):
+    def __init__(self, env: Env, rx=0., ry=0., rz=0.):
+        super().__init__(env)
+        self.base_frame_rotation = R.from_euler("xyz", [rx, ry, rz]).as_matrix()
+
+    def step(self, action: np.ndarray):
+        transformed_action = self.base_transform_action(action)
+        obs, reward, done, truncated, info = self.env.step(transformed_action)
+
+        if "intervene_action" in info:      # TODO test
+            info["intervene_action"] = self.transform_action_inv(info["intervene_action"])
+
+        transformed_obs = self.base_transform_observation(obs)
+        return transformed_obs, reward, done, truncated, info
+
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        return self.base_transform_observation(obs), info
+
+    def base_transform_observation(self, obs):
+        """
+        Transform observations from base frame to the rotated frame
+        """
+        obs["state"]["tcp_pose"][:3] = self.base_frame_rotation @ obs["state"]["tcp_pose"][:3]
+        obs["state"]["tcp_pose"][3:] = (R.from_quat(obs["state"]["tcp_pose"][3:6]) * R.from_matrix(self.base_frame_rotation)).as_quat()
+        obs["state"]["tcp_vel"][:3] = self.base_frame_rotation.transpose() @ obs["state"]["tcp_vel"][:3]
+        obs["state"]["tcp_vel"][3:6] = rotate_rotvec(obs["state"]["tcp_vel"][3:6], self.base_frame_rotation)
+        obs["state"]["tcp_force"] = self.base_frame_rotation.transpose() @ obs["state"]["tcp_force"]
+        obs["state"]["tcp_torque"] = self.base_frame_rotation.transpose() @ obs["state"]["tcp_torque"]
+        return obs
+
+    def base_transform_action(self, action: np.ndarray):
+        action = np.array(action)  # in case action is a jax read-only array
+        action[:3] = self.base_frame_rotation @ action[:3]
+        action[3:6] = (R.from_mrp(action[3:6]) * R.from_matrix(self.base_frame_rotation)).as_mrp()
+        return action
