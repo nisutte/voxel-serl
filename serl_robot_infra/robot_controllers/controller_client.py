@@ -82,7 +82,7 @@ class ControllerClientWithGripper(threading.Thread):
             self.stop()
 
     async def start_controllers(self):
-        self.controller = ControllerClient(p_port=5555, s_port=5556)
+        self.controller = ControllerClient(p_port=self.config.ZEROMQ_PUBLISHER_PORT, s_port=self.config.ZEROMQ_SUBSCRIBER_PORT)
         self.gripper = VacuumGripper(self.robot_ip)
         await self.gripper.connect()
         await self.gripper.activate()

@@ -8,11 +8,16 @@ import os
 import threading
 from pynput import keyboard
 
-from ur_env.envs.relative_env import RelativeFrame
-from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper, ObservationRotationWrapper
+from ur_env.envs.camera_env.box_picking_camera_env import UR5Env
+from ur_env.envs.dual_ur5_env import DualUR5Env
+from ur_env.envs.relative_env import RelativeFrame, BaseFrameRotation
+from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper, ObservationRotationWrapper, \
+    DualSpaceMouseIntervention
 
 from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper, ScaleObservationWrapper
 from serl_launcher.wrappers.chunking import ChunkingWrapper
+
+from serl_robot_infra.ur_env.envs.handover_env import UR5DualCameraConfigRight, UR5DualCameraConfigLeft
 
 import ur_env
 
@@ -32,14 +37,40 @@ def on_esc(key):
 
 
 if __name__ == "__main__":
-    env = gym.make("box_picking_color_env",
-                   camera_mode="pointcloud",
-                   max_episode_length=100,
-                   )
-    env = SpacemouseIntervention(env)
-    env = RelativeFrame(env)
-    env = ToMrpWrapper(env)
-    env = ScaleObservationWrapper(env)
+    fake_env = False
+    camera_mode = "none"
+
+    left_env = UR5Env(
+        fake_env = fake_env,
+        config = UR5DualCameraConfigLeft,
+        camera_mode=camera_mode,
+    )
+
+    right_env = UR5Env(
+        fake_env = fake_env,
+        config = UR5DualCameraConfigRight,
+        camera_mode=camera_mode,
+    )
+
+    left_env = BaseFrameRotation(left_env, rx=np.pi/4.)
+    right_env = BaseFrameRotation(right_env, rx=-np.pi/4.)
+
+    left_env = RelativeFrame(left_env)
+    right_env = RelativeFrame(right_env)
+
+    left_env = ToMrpWrapper(left_env)
+    right_env = ToMrpWrapper(right_env)
+
+    left_env = ScaleObservationWrapper(left_env)
+    right_env = ScaleObservationWrapper(right_env)
+
+    env = DualUR5Env(
+        env_left=left_env,
+        env_right=right_env,
+    )
+    if not fake_env:
+        env = DualSpaceMouseIntervention(env)
+
     # env = ObservationRotationWrapper(env)       # if it should be enabled
     env = SERLObsWrapper(env)
     env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
@@ -52,8 +83,8 @@ if __name__ == "__main__":
     total_count = 0
     pbar = tqdm(total=success_needed)
 
-    info_dict = {'state': env.unwrapped.curr_pos, 'gripper_state': env.unwrapped.gripper_state,
-                 'force': env.unwrapped.curr_force, 'reset_pose': env.unwrapped.curr_reset_pose}
+    info_dict = {'state': env.unwrapped.left_env.curr_pos, 'gripper_state': env.unwrapped.left_env.gripper_state,
+                 'force': env.unwrapped.left_env.curr_force, 'reset_pose': env.unwrapped.left_env.curr_reset_pose}
     listener_1 = keyboard.Listener(daemon=True, on_press=lambda event: on_space(event, info_dict=info_dict))
     listener_1.start()
 
@@ -67,6 +98,8 @@ if __name__ == "__main__":
 
     if not os.access(file_dir, os.W_OK):
         raise PermissionError(f"No permission to write to {file_dir}")
+
+    # TODO done until here
 
     try:
         running_reward = 0.

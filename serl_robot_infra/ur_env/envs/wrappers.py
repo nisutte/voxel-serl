@@ -16,7 +16,6 @@ ROT_GENERAL = np.array([np.eye(3), ROT90, ROT90 @ ROT90, ROT90.transpose()])
 class SpacemouseIntervention(gym.ActionWrapper):
     def __init__(self, env, gripper_action_span=3):
         super().__init__(env)
-
         self.gripper_enabled = True
 
         try:
@@ -91,6 +90,27 @@ class SpacemouseIntervention(gym.ActionWrapper):
     def step(self, action):
         new_action = self.action(action)
         # print(f"new action: {new_action}")
+        obs, rew, done, truncated, info = self.env.step(new_action)
+        info["intervene_action"] = new_action
+        info["left"] = self.left.any()
+        info["right"] = self.right.any()
+        return obs, rew, done, truncated, info
+
+
+class DualSpaceMouseIntervention(SpacemouseIntervention):
+    """double the spacemouse input to test the dual robot setup"""
+    def __init__(self, env):
+        super().__init__(env)
+
+    def action(self, action):
+        action = super().action(action)
+
+        # double it here
+        action = np.concatenate((action, action), axis=0)
+        return action
+
+    def step(self, action):
+        new_action = self.action(action)
         obs, rew, done, truncated, info = self.env.step(new_action)
         info["intervene_action"] = new_action
         info["left"] = self.left.any()
