@@ -103,10 +103,19 @@ class DualSpaceMouseIntervention(SpacemouseIntervention):
         super().__init__(env)
 
     def action(self, action):
-        action = super().action(action)
+        expert_a = self.get_deadspace_action()
 
-        # double it here
-        action = np.concatenate((action, action), axis=0)
+        if np.linalg.norm(
+                expert_a) > 0.001 or self.left.any() or self.right.any():  # also read buttons with no movement
+            self.last_intervene = time.time()
+
+        if self.gripper_enabled:
+            gripper_action = np.zeros((1,)) + int(self.left.any()) - int(self.right.any())
+            expert_a = np.concatenate((expert_a, gripper_action), axis=0)
+
+        if time.time() - self.last_intervene < 0.5:
+            return np.concatenate((expert_a, expert_a), axis=0)
+
         return action
 
     def step(self, action):

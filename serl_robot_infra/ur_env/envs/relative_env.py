@@ -102,7 +102,7 @@ class RelativeFrame(gym.Wrapper):
         """
         action = np.array(action)  # in case action is a jax read-only array
         action[:3] = self.rotation_matrix_reset @ action[:3]
-        action[3:6] = (R.from_matrix(self.rotation_matrix) * R.from_mrp(action[3:6])).as_mrp()
+        # action[3:6] = (R.from_matrix(self.rotation_matrix_reset) * R.from_mrp(action[3:6]) * R.from_matrix(self.rotation_matrix_reset.transpose())).as_mrp()
         return action
 
     def transform_action_inv(self, action: np.ndarray):
@@ -112,7 +112,7 @@ class RelativeFrame(gym.Wrapper):
         """
         action = np.array(action)
         action[:3] = self.rotation_matrix_reset.transpose() @ action[:3]
-        action[3:6] = (R.from_matrix(self.rotation_matrix.transpose()) * R.from_mrp(action[3:6])).as_mrp()
+        # action[3:6] = (R.from_matrix(self.rotation_matrix_reset.transpose()) * R.from_mrp(action[3:6]) * R.from_matrix(self.rotation_matrix_reset)).as_mrp()
         return action
 
 

@@ -20,10 +20,11 @@ class DualUR5Env(gym.Env):
             np.ones((action_dim,), dtype=np.float32) * -1,
             np.ones((action_dim,), dtype=np.float32),
         )
-        image_dict = ({f"left/{key}": self.env_left.observation_space["images"][key] for key in
-                       self.env_left.observation_space["images"].keys()} |
-                      {f"right/{key}": self.env_right.observation_space["images"][key] for key in
-                       self.env_right.observation_space["images"].keys()})
+        if env_left.camera_mode is not None:
+            image_dict = ({f"left/{key}": self.env_left.observation_space["images"][key] for key in
+                           self.env_left.observation_space["images"].keys()} |
+                          {f"right/{key}": self.env_right.observation_space["images"][key] for key in
+                           self.env_right.observation_space["images"].keys()})
 
         state_dict = ({f"left/{key}": self.env_left.observation_space["state"][key] for key in
                        self.env_left.observation_space["state"].keys()} |
@@ -33,7 +34,7 @@ class DualUR5Env(gym.Env):
         self.observation_space = gym.spaces.Dict(
             {
                 "state": gym.spaces.Dict(state_dict),
-                "images": gym.spaces.Dict(image_dict)
+                # "images": gym.spaces.Dict(image_dict)         # TODO only temporarly
             }
         )
 
@@ -84,12 +85,12 @@ class DualUR5Env(gym.Env):
         return ob, {}
 
     def combine_obs(self, ob_left, ob_right):
-        left_images = {f"left/{key}": ob_left["images"][key] for key in ob_left["images"].keys()}
-        right_images = {f"right/{key}": ob_right["images"][key] for key in ob_right["images"].keys()}
+        # left_images = {f"left/{key}": ob_left["images"][key] for key in ob_left["images"].keys()}
+        # right_images = {f"right/{key}": ob_right["images"][key] for key in ob_right["images"].keys()}
         left_state = {f"left/{key}": ob_left["state"][key] for key in ob_left["state"].keys()}
         right_state = {f"right/{key}": ob_right["state"][key] for key in ob_right["state"].keys()}
         ob = {
             "state": left_state | right_state,
-            "images": left_images | right_images
+            # "images": left_images | right_images
         }
         return ob

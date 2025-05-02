@@ -52,8 +52,8 @@ if __name__ == "__main__":
         camera_mode=camera_mode,
     )
 
-    left_env = BaseFrameRotation(left_env, rx=np.pi/4.)
-    right_env = BaseFrameRotation(right_env, rx=-np.pi/4.)
+    # left_env = BaseFrameRotation(left_env, rx=np.pi/4.)
+    # right_env = BaseFrameRotation(right_env, rx=-np.pi/4.)
 
     left_env = RelativeFrame(left_env)
     right_env = RelativeFrame(right_env)
@@ -83,8 +83,8 @@ if __name__ == "__main__":
     total_count = 0
     pbar = tqdm(total=success_needed)
 
-    info_dict = {'state': env.unwrapped.left_env.curr_pos, 'gripper_state': env.unwrapped.left_env.gripper_state,
-                 'force': env.unwrapped.left_env.curr_force, 'reset_pose': env.unwrapped.left_env.curr_reset_pose}
+    info_dict = {'state': env.unwrapped.env_left.curr_pos, 'gripper_state': env.unwrapped.env_left.gripper_state,
+                 'force': env.unwrapped.env_left.curr_force, 'reset_pose': env.unwrapped.env_left.curr_reset_pose}
     listener_1 = keyboard.Listener(daemon=True, on_press=lambda event: on_space(event, info_dict=info_dict))
     listener_1.start()
 
@@ -107,7 +107,7 @@ if __name__ == "__main__":
             if exit_program.is_set():
                 raise KeyboardInterrupt  # stop program, but clean up before
 
-            next_obs, rew, done, truncated, info = env.step(action=np.zeros((7,)))
+            next_obs, rew, done, truncated, info = env.step(action=np.zeros((14,)))
             actions = info["intervene_action"]
 
             transition = copy.deepcopy(
@@ -121,6 +121,7 @@ if __name__ == "__main__":
                 )
             )
             transitions.append(transition)
+            print(next_obs["state"])
 
             obs = next_obs
             running_reward += rew
