@@ -8,7 +8,18 @@
   <img src="./docs/images/Voxel_grid_example_slim.png" height="180pt"/>
 </p>
 
-Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl] implementation)  implementation by incorporating additional modalities into the reinforcement learning pipeline. It utilizes 3D spatial perception to improve the robustness of real-world vacuum gripping.
+Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl] implementation)  implementation by incorporating additional modalities into the reinforcement learning pipeline. It utilizes 3D spatial perception to improve the robustness of real-world vacuum gripping.$
+
+## Handover TODO's
+
+- [x] Make dual robot pointcloud work
+- [ ] add difference parameters between the EE
+- [ ] set up BT to grip a box at the start
+- [ ] set up start poses
+- [ ] come up with a good reward
+- [ ] share the same voxnet backbone (less gpu mem, also can be frozen)
+
+
 ## Contributions
 
 | Code Directory                                                                                             | Description                                |
