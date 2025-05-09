@@ -38,18 +38,20 @@ def on_esc(key):
 
 if __name__ == "__main__":
     fake_env = False
-    camera_mode = "none"
+    camera_mode = "pointcloud"
 
     left_env = UR5Env(
         fake_env = fake_env,
         config = UR5DualCameraConfigLeft,
         camera_mode=camera_mode,
+        visualize_camera_mode=False,
     )
 
     right_env = UR5Env(
         fake_env = fake_env,
         config = UR5DualCameraConfigRight,
         camera_mode=camera_mode,
+        visualize_camera_mode=False,
     )
 
     # left_env = BaseFrameRotation(left_env, rx=np.pi/4.)
@@ -121,7 +123,7 @@ if __name__ == "__main__":
                 )
             )
             transitions.append(transition)
-            print(next_obs["state"])
+            # print(next_obs["state"])
 
             obs = next_obs
             running_reward += rew
