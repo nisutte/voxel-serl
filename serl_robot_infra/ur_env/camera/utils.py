@@ -34,7 +34,9 @@ def finetune_pointcloud_fusion(pc1: np.ndarray, pc2: np.ndarray):
 
 
 def pointcloud_to_voxel_grid(points: np.ndarray, voxel_size: float, min_bounds: np.ndarray, max_bounds: np.ndarray, grid_dimensions: np.ndarray):
+    print(f"before: {points.shape}", end='')
     points_filtered = crop_pointcloud(points, min_bounds, max_bounds)
+    print(f"after: {points_filtered.shape}")
     voxel_indices = ((points_filtered[:, :3] - min_bounds) / voxel_size).astype(np.uint8)
     voxel_grid = None
 
@@ -56,7 +58,7 @@ def crop_pointcloud(points: np.ndarray, min_bounds: np.ndarray, max_bounds: np.n
     return points[mask]
 
 
-def transform_point_cloud(points, transform_matrix):
+def transform_point_cloud(points: np.ndarray, transform_matrix):
     if points.shape[1] == 3 or points.shape[1] == 6:
         points = np.hstack([points[:, :3], np.ones((points.shape[0], 1)), points[:, 3:]])
 
@@ -72,108 +74,50 @@ def transform_point_cloud(points, transform_matrix):
 
 
 class PointCloudFusion:
-    def __init__(self, angle=30., x_distance=0.195, y_distance=-0.0, voxel_grid_shape=(100, 100, 80)):
-        self.pcd1, self.pcd2 = None, None
+    def __init__(self, camera_params, voxel_params):
+        assert len(camera_params.keys()) < 3
+        assert "voxel_box_size" in voxel_params and "voxel_grid_shape" in voxel_params
 
-        # 10cm width and 8cm height for the box
-        self.min_bounds = np.array([-0.05, -0.05, 0.075])
-        self.max_bounds = np.array([0.05, 0.05, 0.155])
+        self.min_bounds = -np.array(voxel_params["voxel_box_size"]) / 2.
+        self.max_bounds = -self.min_bounds
 
-        vox_size = (self.max_bounds - self.min_bounds) / voxel_grid_shape
+        self.grid_dimensions = voxel_params["voxel_grid_shape"]
+        vox_size = (self.max_bounds - self.min_bounds) / self.grid_dimensions
         assert np.all(np.isclose(vox_size, vox_size[0]))
         self.voxel_size: float = float(vox_size[0])
-        self.grid_dimensions = voxel_grid_shape
 
         self.original_pcds = []
         self._is_transformed = False
-        self.fine_transformed = False
 
-        t1 = np.eye(4)
-        t1[:3, :3] = R.from_euler("xyz", [angle, 0., 0.], degrees=True).as_matrix()
-        t1[1, 3] = x_distance / 2.
-        t1[0, 3] = y_distance / 2.
-        self.t1 = t1
-
-        t2 = np.eye(4)
-        t2[:3, :3] = R.from_euler("xyz", [-angle, 0., 0.], degrees=True).as_matrix()
-        t2[1, 3] = -x_distance / 2.
-        t2[0, 3] = -y_distance / 2.
-        self.t2 = t2
-
-    def save_finetuned(self):
-        assert self.fine_transformed
-        t_finetuned = np.zeros((2, *self.t1.shape))
-        t_finetuned[0, ...] = self.t1
-        t_finetuned[1, ...] = self.t2
-        with open("PointCloudFusionFinetuned.npy", "wb") as f:
-            np.save(f, t_finetuned)
+        self.keys = list(camera_params.keys())
+        self.pcd: dict[str: np.ndarray] = {}
+        self.t = {}         # transformation
+        for key, params in camera_params.items():
+            t = np.eye(4)
+            t[:3, :3] = R.from_euler("xyz", params["angle"], degrees=True).as_matrix()
+            t[:3, 3]  = params["center_offset"]
+            self.t[key] = t
 
     def get_voxelgrid_shape(self):
         return np.ceil((self.max_bounds - self.min_bounds) / self.voxel_size).astype(int)
 
-    def load_finetuned(self):
-        from os.path import exists
-        if not exists("/home/nico/real-world-rl/spacemouse_tests/PointCloudFusionFinetuned.npy"):
-            return False
-        with open("/home/nico/real-world-rl/spacemouse_tests/PointCloudFusionFinetuned.npy", "rb") as f:
-            t_finetuned = np.load(f)
-            self.t1 = t_finetuned[0, ...]
-            self.t2 = t_finetuned[1, ...]
-        self.fine_transformed = True
-        print(f"loaded finetuned Point Cloud fusion parameters!")
-        return True
-
-    def append(self, pcd: np.ndarray):
-        if self.pcd1 is None:
-            self.original_pcds.append(pcd)
-            self.pcd1 = pcd
-        elif self.pcd2 is None:
-            self.original_pcds.append(pcd)
-            self.pcd2 = pcd
-        else:
-            raise NotImplementedError("3 pointclouds not supported")
-
-    def calibrate_fusion(self):
-        assert self.is_complete()
-        # rough transform
-        if not self._is_transformed:
-            self._transform()
-
-        # then calibrate
-        t = finetune_pointcloud_fusion(pc1=self.pcd1, pc2=self.pcd2)
-        return t
-
-    def set_fine_tuned_transformation(self, transformation):
-        assert not self.fine_transformed
-
-        t = transformation.copy()[:3, 3] / 2.  # half the translation
-        rot = np.zeros((2, 3, 3))
-        rot[0, ...] = transformation[:3, :3]
-        rot[1, ...] = np.eye(3)
-        r = R.from_matrix(rot).mean()  # half the rotation
-
-        t1_fine = np.eye(4)
-        t1_fine[:3, :3] = r.as_matrix()
-        t1_fine[:3, 3] = t
-        self.t1 = np.dot(self.t1, t1_fine)
-
-        t2_fine = np.eye(4)
-        t2_fine[:3, :3] = r.inv().as_matrix()
-        t2_fine[:3, 3] = -t
-        self.t2 = np.dot(self.t2, t2_fine)
-
-        self.fine_transformed = True
+    def append(self, pcd: np.ndarray, key):
+        assert key in self.keys
+        self.pcd[key] = pcd
+        self.original_pcds.append(pcd)
 
     def clear(self):
-        self.pcd1, self.pcd2 = None, None
-        self._is_transformed = False
+        self.pcd = {}
         self.original_pcds = []
+        self._is_transformed = False
 
     def _transform(self):
         assert not self.is_empty()
-        self.pcd1 = transform_point_cloud(points=self.pcd1, transform_matrix=self.t1)
-        if self.pcd2 is not None:
-            self.pcd2 = transform_point_cloud(points=self.pcd2, transform_matrix=self.t2)
+        if self._is_transformed:
+            return
+
+        for key in self.pcd.keys():
+            self.pcd[key] = transform_point_cloud(points=self.pcd[key], transform_matrix=self.t[key])
         self._is_transformed = True
 
     def voxelize(self, points: np.ndarray):
@@ -184,23 +128,19 @@ class PointCloudFusion:
     def crop(self, points: np.ndarray):
         return crop_pointcloud(points=points, min_bounds=self.min_bounds, max_bounds=self.max_bounds)
 
-    def get_pointcloud_representation(self, voxelize=True):
-        if self.is_complete():
-            return self.fuse_pointclouds(voxelize=voxelize)
-        elif not self.is_empty():
-            return self.get_first(voxelize=voxelize)
+    def get_pointcloud_representation(self, voxelize=True, crop=True):
+        assert self.is_complete()
+        self._transform()
 
-    def fuse_pointclouds(self, voxelize=True, cropped=True):
-        if not self._is_transformed:
-            self._transform()
-        swap = lambda x: np.moveaxis(x, 0, 1)
-        fused = swap(np.hstack([swap(self.pcd1), swap(self.pcd2)]))
-        return self.voxelize(fused) if voxelize else (self.crop(fused) if cropped else fused)
+        if len(self.keys) == 1:
+            pcd = self.pcd[self.keys[0]]
+            return self.voxelize(pcd) if voxelize else (self.crop(pcd) if crop else pcd)
 
-    def get_first(self, voxelize=True):
-        if not self._is_transformed:
-            self.pcd1 = transform_point_cloud(self.pcd1, transform_matrix=self.t2)      # t2 only temporary
-        return self.voxelize(self.pcd1) if voxelize else self.crop(self.pcd1)
+        else:       # len 2
+            swap = lambda x: np.moveaxis(x, 0, 1)
+            pcd1, pcd2 = self.pcd.values()
+            fused = swap(np.hstack([swap(pcd1), swap(pcd2)]))
+            return self.voxelize(fused) if voxelize else (self.crop(fused) if crop else fused)
 
     def get_original_pcds(self):
         if len(self.original_pcds) == 1:
@@ -209,10 +149,20 @@ class PointCloudFusion:
             return self.original_pcds
 
     def is_complete(self):
-        return self.pcd1 is not None and self.pcd2 is not None
+        return len(self.pcd) == len(self.keys)
 
     def is_empty(self):
-        return self.pcd1 is None and self.pcd2 is None
+        return len(self.pcd) == 0
+
+    def calibrate_fusion(self):
+        assert self.is_complete()
+        # rough transform
+        self._transform()
+
+        # then calibrate
+        pcd1, pcd2 = self.pcd.values()
+        t = finetune_pointcloud_fusion(pc1=pcd1, pc2=pcd2)
+        return t
 
 
 class CalibrationTread(threading.Thread):
@@ -236,16 +186,15 @@ class CalibrationTread(threading.Thread):
         print(f"calibrating for {len(self.pc_backlog)} samples...")
         for i, (pc1, pc2) in enumerate(self.pc_backlog):
             self.pc_fusion.clear()
-            self.pc_fusion.append(pc1)
-            self.pc_fusion.append(pc2)
+            self.pc_fusion.append(pc1, self.pc_fusion.keys[0])
+            self.pc_fusion.append(pc2, self.pc_fusion.keys[1])
 
             self.samples[i, ...] = self.pc_fusion.calibrate_fusion()
 
             if visualize:
                 # visualize for testing
-                pc = self.pc_fusion.pcd1.copy()
-                pc2 = self.pc_fusion.pcd2.copy()
-                pc = transform_point_cloud(points=pc, transform_matrix=self.samples[i])  # transform
+                pc, pc2 = self.pc_fusion.pcd.values()
+                pc = transform_point_cloud(points=pc.copy(), transform_matrix=self.samples[i])  # transform
 
                 swap = lambda x: np.moveaxis(x, 0, 1)
                 fused = swap(np.hstack([swap(pc), swap(pc2)]))
@@ -255,11 +204,30 @@ class CalibrationTread(threading.Thread):
                 o3d.visualization.draw_geometries([pc])
 
         rotations = R.from_matrix(self.samples[:, :3, :3])
-        mean_rot = rotations.mean().as_matrix()
-        translation = np.mean(self.samples[:, :3, 3], axis=0)
+        mean_rot = rotations.mean()
+        mean_translation = np.mean(self.samples[:, :3, 3], axis=0)
 
-        final = np.eye(4)
-        final[:3, :3] = mean_rot
-        final[:3, 3] = translation
-        print(f"calibration result: {final}")
-        self.pc_fusion.set_fine_tuned_transformation(final)
+        print(f"mean translation from {self.pc_fusion.keys[0]} to {self.pc_fusion.keys[1]} "
+              f"is: {mean_translation}   and mean rotation: {mean_rot.as_euler('xyz', degrees=True)}")
+
+        t = mean_translation.copy() / 2.  # half the translation
+        rot = np.zeros((2, 3, 3))
+        rot[0, ...] = mean_rot.as_matrix()
+        rot[1, ...] = np.eye(3)
+        r = R.from_matrix(rot).mean()  # half the rotation
+
+        t1_fine = np.eye(4)
+        t1_fine[:3, :3] = r.as_matrix()
+        t1_fine[:3, 3] = t
+        self.pc_fusion.t[self.pc_fusion.keys[0]] = np.dot(self.pc_fusion.t[self.pc_fusion.keys[0]], t1_fine)
+
+        t2_fine = np.eye(4)
+        t2_fine[:3, :3] = r.inv().as_matrix()
+        t2_fine[:3, 3] = -t
+        self.pc_fusion.t[self.pc_fusion.keys[1]] = np.dot(self.pc_fusion.t[self.pc_fusion.keys[1]], t1_fine)
+
+        t1, t2 = self.pc_fusion.t.values()
+        print(f"change the params to: {self.pc_fusion.keys[0]}: 'angle': {R.from_matrix(t1[:3, :3]).as_euler('xyz')}"
+              f" 'center_offset': {t1[:3, 3]}")
+        print(f"change the params to: {self.pc_fusion.keys[1]}: 'angle': {R.from_matrix(t2[:3, :3]).as_euler('xyz')}"
+              f" 'center_offset': {t2[:3, 3]}")

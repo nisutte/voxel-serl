@@ -47,36 +47,53 @@ class ImageDisplayer(threading.Thread):
 
 
 class PointCloudDisplayer:
-    def __init__(self):
+    def __init__(self, left=100, top=100):
         self.window = o3d.visualization.Visualizer()
-        self.window.create_window(height=400, width=400, visible=True)
+        self.window.create_window(height=500, width=500, visible=True, left=left, top=top)
 
         self.pc = o3d.geometry.PointCloud()
         self.window.get_render_option().load_from_json(
-            "/home/nico/.config/JetBrains/PyCharm2024.1/scratches/render_options.json")
+            "/home/nico/real-world-rl/serl/serl_robot_infra/ur_env/camera/render_options.json")
 
         self.param = o3d.io.read_pinhole_camera_parameters(
-            "/home/nico/.config/JetBrains/PyCharm2024.1/scratches/camera_parameters.json")
+            "/home/nico/real-world-rl/serl/serl_robot_infra/ur_env/camera/camera_parameters.json")
         self.ctr = self.window.get_view_control()
         self.coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01, origin=[0, 0, 0])
 
     def display(self, points):
         self.pc.clear()
         # MASSIVE! speed up if float64 is used, see: https://github.com/isl-org/Open3D/issues/1045
+        print("shape in displayer: ", points.shape)
         self.pc.points = o3d.utility.Vector3dVector(points[:, :3].astype(np.float64) / 1000.)
         if points.shape[1] == 6:
             self.pc.colors = o3d.utility.Vector3dVector(points[:, 3:].astype(np.float64) / 255.)
         self.window.clear_geometries()
         self.window.add_geometry(self.pc)
-        # self.window.add_geometry(self.coord_frame)
+        self.window.add_geometry(self.coord_frame)
         self.ctr.convert_from_pinhole_camera_parameters(self.param, True)
 
         self.window.poll_events()
-        # self.window.update_renderer()
+        # self.window.run()
+        # final_params = self.ctr.convert_to_pinhole_camera_parameters()
+        # print("\n=== Final Camera Pinhole Parameters ===")
+        # print("Intrinsic matrix:\n", final_params.intrinsic.intrinsic_matrix)
+        # print("Extrinsic matrix (camera pose):\n", final_params.extrinsic)
 
     def close(self):
         self.window.destroy_window()
 
+class PointCloudDummyDisplayer:
+    def __init__(self):
+        self.points = []
+
+    def display(self, points):
+        self.points.append(points)
+
+    def get(self):
+        if len(self.points):
+            return self.points.pop(0)
+        else:
+            raise RuntimeError("No points appended")
 
 ##############################################################################
 
@@ -107,6 +124,8 @@ class DefaultEnvConfig:
         "shoulder": "",
         "wrist": "",
     }
+    VOXEL_PARAMS: Dict = {}
+    CAMERA_PARAMS: Dict = {}
 
 
 ##############################################################################
@@ -121,6 +140,7 @@ class UR5Env(gym.Env):
             max_episode_length: int = 100,
             save_video: bool = False,
             camera_mode: str = "rgb",  # one of (rgb, grey, depth, both(rgb depth), pointcloud, none)
+            visualize_camera_mode: bool = True,
     ):
         self.max_episode_length = max_episode_length
         self.curr_path_length = 0
@@ -152,6 +172,7 @@ class UR5Env(gym.Env):
         self.save_video = save_video
         self.recording_frames = []
         self.camera_mode = camera_mode
+        self.visualize_camera_mode = visualize_camera_mode
 
         self.cost_infos = {}
 
@@ -251,11 +272,16 @@ class UR5Env(gym.Env):
         if self.camera_mode is not None:
             self.init_cameras(config.REALSENSE_CAMERAS)
             self.img_queue = queue.Queue()
-            if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
-                self.displayer = PointCloudDisplayer()  # o3d displayer cannot be threaded :/
+            if self.visualize_camera_mode:
+                if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
+                    self.displayer = PointCloudDisplayer()  # o3d displayer cannot be threaded :/
+                else:
+                    self.displayer = ImageDisplayer(self.img_queue)
+                    self.displayer.start()
             else:
-                self.displayer = ImageDisplayer(self.img_queue)
-                self.displayer.start()
+                if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
+                    self.displayer = PointCloudDummyDisplayer()             # save the points for use in dual PC
+
             print("[CAM] Cameras are ready!")
 
         while not self.controller.is_ready():  # wait for controller
@@ -270,15 +296,14 @@ class UR5Env(gym.Env):
             # voxel_grid_shape[-1] *= 8     # do not use compacting for now
             # voxel_grid_shape *= 2
             print(f"pointcloud resolution set to: {voxel_grid_shape}")
-            self.pointcloud_fusion = PointCloudFusion(angle=30.5, x_distance=0.185, y_distance=-0.01, voxel_grid_shape=voxel_grid_shape)
+            self.pointcloud_fusion = PointCloudFusion(self.config.CAMERA_PARAMS, self.config.VOXEL_PARAMS)
 
-            # load pre calibrated, else calibrate
-            if not self.pointcloud_fusion.load_finetuned():
-                # TODO make calibration more robust!
-                self.calibration_thread = CalibrationTread(pc_fusion=self.pointcloud_fusion, verbose=True)
-                self.calibration_thread.start()
-
-                self.calibrate_pointcloud_fusion(visualize=True)
+            # TODO add calibration back in
+            # if False:
+            #     self.calibration_thread = CalibrationTread(pc_fusion=self.pointcloud_fusion, verbose=True)
+            #     self.calibration_thread.start()
+            #
+            #     self.calibrate_pointcloud_fusion(visualize=True)
 
     def clip_safety_box(self, next_pos: np.ndarray) -> np.ndarray:
         """Clip the pose to be within the safety box."""
@@ -318,6 +343,7 @@ class UR5Env(gym.Env):
         safe_pos = self.clip_safety_box(next_pos)
         self._send_pos_command(safe_pos)
         self._send_gripper_command(gripper_action)
+        # print(f"sent pose: {safe_pos}  with action {action}    actual pose: {self.curr_pos}")
 
         self.curr_path_length += 1
 
@@ -497,12 +523,7 @@ class UR5Env(gym.Env):
 
     def crop_image(self, name, image) -> np.ndarray:
         """Crop realsense images to be a square."""
-        if name == "wrist":
-            return image[:, 124:604, :]
-        elif name == "wrist_2":
-            return image[:, 124:604, :]
-        else:
-            raise ValueError(f"Camera {name} not recognized in cropping")
+        return image[:, 124:604, :]
 
     def get_image(self) -> Dict[str, np.ndarray]:
         """Get images from the realsense cameras."""
@@ -549,7 +570,7 @@ class UR5Env(gym.Env):
 
                 if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
                     pointcloud = image
-                    self.pointcloud_fusion.append(pointcloud)
+                    self.pointcloud_fusion.append(pointcloud, key.split('_')[0])
 
             except queue.Empty:
                 input(f"{key} camera frozen. Check connect, then press enter to relaunch...")
@@ -568,7 +589,7 @@ class UR5Env(gym.Env):
 
         return images
 
-    def calibrate_pointcloud_fusion(self, save=True, visualize=False, num_samples=20):
+    def calibrate_pointcloud_fusion(self, visualize=False, num_samples=20):
         self.reset()
         import open3d as o3d
 
@@ -578,7 +599,7 @@ class UR5Env(gym.Env):
 
         obs, reward, done, truncated, _ = self.step(np.zeros((7,)))
         pc = o3d.geometry.PointCloud()
-        fused = self.pointcloud_fusion.fuse_pointclouds(voxelize=False, cropped=False)
+        fused = self.pointcloud_fusion.get_pointcloud_representation(voxelize=False, crop=False)
         pc.points = o3d.utility.Vector3dVector(fused)
         o3d.visualization.draw_geometries([pc])
 
@@ -597,23 +618,7 @@ class UR5Env(gym.Env):
         # calibrate()
         self.controller.stop()
         time.sleep(1)
-        self.calibration_thread.calibrate()
-
-        if save:
-            self.pointcloud_fusion.save_finetuned()
-
-        if visualize:
-            pc = o3d.geometry.PointCloud()
-            for i in range(num_samples):
-                pc.clear()
-                pcs = self.calibration_thread.pc_backlog[i]
-                self.pointcloud_fusion.clear()
-                self.pointcloud_fusion.append(pcs[0])
-                self.pointcloud_fusion.append(pcs[1])
-                fused = self.pointcloud_fusion.fuse_pointclouds(voxelize=False, cropped=False)
-                pc.points = o3d.utility.Vector3dVector(fused)
-                o3d.visualization.draw_geometries([pc])
-
+        self.calibration_thread.calibrate(visualize=visualize)
         self.calibration_thread.join()
         exit(f"restart the program to use the calibrated values")
 
