@@ -114,7 +114,9 @@ class DualSpaceMouseIntervention(SpacemouseIntervention):
             expert_a = np.concatenate((expert_a, gripper_action), axis=0)
 
         if time.time() - self.last_intervene < 0.5:
-            return np.concatenate((expert_a, expert_a), axis=0)
+            expert_b = expert_a.copy()
+            expert_b *= np.asarray([-1, -1, 1, -1, -1, 1, 1])
+            return np.concatenate((expert_a, expert_b), axis=0)
 
         return action
 

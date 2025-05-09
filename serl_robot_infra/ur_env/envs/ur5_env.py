@@ -63,7 +63,6 @@ class PointCloudDisplayer:
     def display(self, points):
         self.pc.clear()
         # MASSIVE! speed up if float64 is used, see: https://github.com/isl-org/Open3D/issues/1045
-        print("shape in displayer: ", points.shape)
         self.pc.points = o3d.utility.Vector3dVector(points[:, :3].astype(np.float64) / 1000.)
         if points.shape[1] == 6:
             self.pc.colors = o3d.utility.Vector3dVector(points[:, 3:].astype(np.float64) / 255.)

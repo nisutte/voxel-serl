@@ -34,9 +34,7 @@ def finetune_pointcloud_fusion(pc1: np.ndarray, pc2: np.ndarray):
 
 
 def pointcloud_to_voxel_grid(points: np.ndarray, voxel_size: float, min_bounds: np.ndarray, max_bounds: np.ndarray, grid_dimensions: np.ndarray):
-    print(f"before: {points.shape}", end='')
     points_filtered = crop_pointcloud(points, min_bounds, max_bounds)
-    print(f"after: {points_filtered.shape}")
     voxel_indices = ((points_filtered[:, :3] - min_bounds) / voxel_size).astype(np.uint8)
     voxel_grid = None
 
