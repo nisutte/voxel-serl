@@ -13,11 +13,12 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 ## Handover TODO's
 
 - [x] Make dual robot pointcloud work
-- [ ] add difference parameters between the EE
 - [ ] set up BT to grip a box at the start
 - [ ] set up start poses
 - [ ] come up with a good reward
-- [ ] share the same voxnet backbone (less gpu mem, also can be frozen)
+- [ ] collision detection between robots
+- [ ] add difference parameters between the EE
+- [x] share the same voxnet backbone (less gpu mem, also can be frozen)
 
 
 ## Contributions

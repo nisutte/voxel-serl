@@ -50,10 +50,10 @@ class ScaleObservationWrapper(gym.ObservationWrapper):
 
     def __init__(self,
                  env,
-                 translation_scale=100.,
-                 rotation_scale=10.,
-                 force_scale=1.,
-                 torque_scale=10.
+                 translation_scale=1.,
+                 rotation_scale=0.1,
+                 force_scale=0.001,
+                 torque_scale=0.01
                  ):
         super().__init__(env)
         self.translation_scale = translation_scale

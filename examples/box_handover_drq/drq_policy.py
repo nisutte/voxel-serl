@@ -39,8 +39,12 @@ from serl_launcher.utils.launcher import (
 from serl_launcher.data.data_store import MemoryEfficientReplayBufferDataStore
 from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper, ScaleObservationWrapper
 from serl_launcher.wrappers.observation_statistics_wrapper import ObservationStatisticsWrapper
+from ur_env.envs import UR5Env
+from ur_env.envs.handover_env import UR5DualCameraConfigLeft, UR5DualCameraConfigRight
+from ur_env.envs.handover_env.box_handover_env import UR5HandoverEnv
 from ur_env.envs.relative_env import RelativeFrame
-from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper, ObservationRotationWrapper
+from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper, ObservationRotationWrapper, \
+    DualSpaceMouseIntervention
 from serl_launcher.vision.data_augmentations import batched_random_rot90_state, batched_random_rot90_voxel, \
     batched_random_rot90_action
 
@@ -55,11 +59,10 @@ sharding = jax.sharding.PositionalSharding(devices)
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string("env", "box_picking_camera_env", "Name of environment.")
 flags.DEFINE_string("agent", "drq", "Name of agent.")
-flags.DEFINE_string("exp_name", "DRQ agent", "Name of the experiment for wandb logging.")
+flags.DEFINE_string("exp_name", "Handover DRQ", "Name of the experiment for wandb logging.")
 flags.DEFINE_integer("max_traj_length", 100, "Maximum length of trajectory.")
-flags.DEFINE_string("camera_mode", "rgb", "Camera mode")
+flags.DEFINE_string("camera_mode", "pointcloud", "Camera mode")
 
 flags.DEFINE_integer("seed", 42, "Random seed.")
 flags.DEFINE_bool("save_model", False, "Whether to save model.")
@@ -73,10 +76,6 @@ flags.DEFINE_integer("encoder_bottleneck_dim", 128, "bottleneck dimension of the
 # flags.DEFINE_integer("proprio_latent_dim", 64,
 #                     "the latent dimension for the state, will be concatenated with encoder bottleneck dim before being passed onward")
 flags.DEFINE_multi_string("encoder_kwargs", None, "Encoder kwargs in the form ['dict key', 'dict value']")
-flags.DEFINE_bool("enable_obs_rotation_wrapper", False,
-                  "Whether to enable observation rotation wrapper (train in one quaternion)")
-flags.DEFINE_bool("enable_obs_rotation_augmentation", False,
-                  "Whether to enable observation rotation augmentation (90 deg)")
 flags.DEFINE_bool("enable_temporal_ensemble_sampling", False,
                   "Whether to enable sampling the action from a temporal ensemble: action = 0.5*a0 + 0.3*a-1 + 0.2*a-2 + 0.1*a-3")
 
@@ -98,7 +97,7 @@ flags.DEFINE_boolean("actor", False, "Is this a learner or a trainer.")
 flags.DEFINE_string("ip", "localhost", "IP address of the learner.")
 flags.DEFINE_string("demo_path", None, "Path to the demo data.")
 flags.DEFINE_integer("checkpoint_period", 0, "Period to save checkpoints.")
-flags.DEFINE_string("checkpoint_path", '/home/nico/real-world-rl/serl/examples/box_picking_drq/checkpoints',
+flags.DEFINE_string("checkpoint_path", '/home/nico/real-world-rl/serl/examples/box_handover_drq/checkpoints',
                     "Path to save checkpoints.")
 
 flags.DEFINE_integer("eval_checkpoint_step", 0, "evaluate the policy from ckpt at this step")
@@ -150,8 +149,8 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
 
     if FLAGS.eval_checkpoint_step:
         wandb_logger = make_wandb_logger(
-            project="paper_evaluation_unseen" if "eval" in FLAGS.env else "paper_evaluation",
-            description=FLAGS.exp_name or FLAGS.env,
+            project="handover_eval",
+            description=FLAGS.exp_name,
             debug=FLAGS.debug,
         )
         success_counter = 0
@@ -271,7 +270,7 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
         with timer.context("sample_actions"):
             if step < FLAGS.random_steps:
                 actions = env.action_space.sample()
-            elif not agent.config["activate_batch_rotation"]:
+            else:
                 sampling_rng, key = jax.random.split(sampling_rng)
                 actions = agent.sample_actions(
                     observations=jax.device_put(obs),
@@ -279,22 +278,7 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
                     deterministic=False,
                 )
                 actions = np.asarray(jax.device_get(actions))
-            else:
-                sampling_rng, rot_rng, key = jax.random.split(sampling_rng, 3)
 
-                rotated_obs = copy.deepcopy(obs)
-                rotated_obs["state"] = batched_random_rot90_state(obs["state"], rot_rng)
-                rotated_obs["wrist_pointcloud"] = batched_random_rot90_voxel(obs["wrist_pointcloud"], rot_rng)
-
-                actions = agent.sample_actions(
-                    observations=jax.device_put(rotated_obs),
-                    seed=key,
-                    deterministic=False,
-                )
-                for _ in range(3):
-                    actions = batched_random_rot90_action(actions[None, ...], rot_rng)[0, ...]  # rotate back
-
-                actions = np.asarray(jax.device_get(actions))
 
         # Step environment
         with timer.context("step_env"):
@@ -492,23 +476,37 @@ def main(_):
     rng = jax.random.PRNGKey(FLAGS.seed)
 
     # create env and load dataset
-    env = gym.make(
-        FLAGS.env,
-        camera_mode=FLAGS.camera_mode,
+    left_env = UR5Env(
         fake_env=FLAGS.learner,
-        max_episode_length=FLAGS.max_traj_length,
+        config=UR5DualCameraConfigLeft,
+        camera_mode=FLAGS.camera_mode,
+        visualize_camera_mode=False,
     )
-    # if FLAGS.actor:
-    #     env = SpacemouseIntervention(env)
-    env = RelativeFrame(env)
-    env = ToMrpWrapper(env)
-    env = ScaleObservationWrapper(env)  # scale obs space (after quat2mrp, but before serlobs)
-    env = ObservationStatisticsWrapper(env)
-    if FLAGS.enable_obs_rotation_wrapper:
-        env = ObservationRotationWrapper(env)
+
+    right_env = UR5Env(
+        fake_env=FLAGS.learner,
+        config=UR5DualCameraConfigRight,
+        camera_mode=FLAGS.camera_mode,
+        visualize_camera_mode=False,
+    )
+
+    left_env = RelativeFrame(left_env)
+    right_env = RelativeFrame(right_env)
+
+    left_env = ToMrpWrapper(left_env)
+    right_env = ToMrpWrapper(right_env)
+
+    left_env = ScaleObservationWrapper(left_env)
+    right_env = ScaleObservationWrapper(right_env)
+
+    env = UR5HandoverEnv(
+        fake_env=FLAGS.learner,
+        env_left=left_env,
+        env_right=right_env,
+    )
+
     env = SERLObsWrapper(env)
     env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
-    env = RecordEpisodeStatistics(env)
 
     image_keys = [key for key in env.observation_space.keys() if key != "state"]
     print(f"image keys: {image_keys}")
@@ -544,10 +542,7 @@ def main(_):
     parameter_overview(agent)
     # plot_conv3d_kernels(agent.state.params)
 
-    agent.config["activate_batch_rotation"] = FLAGS.enable_obs_rotation_augmentation  # obs batch rotation control
-    if FLAGS.enable_obs_rotation_augmentation:
-        print("Batch Observation Rotation enabled!")
-    assert not FLAGS.enable_obs_rotation_augmentation or not FLAGS.enable_obs_rotation_wrapper  # both is pointless
+    agent.config["activate_batch_rotation"] = False  # obs batch rotation control
 
     def create_replay_buffer_and_wandb_logger():
         replay_buffer = MemoryEfficientReplayBufferDataStore(
@@ -559,7 +554,7 @@ def main(_):
         # set up wandb and logging
         wandb_logger = make_wandb_logger(
             project="paper_experiments",
-            description=FLAGS.exp_name or FLAGS.env,
+            description=FLAGS.exp_name,
             debug=FLAGS.debug,
         )
         return replay_buffer, wandb_logger
@@ -583,13 +578,6 @@ def main(_):
                 for obs_name in to_pop:
                     traj["observations"].pop(obs_name)
                     traj["next_observations"].pop(obs_name)
-
-                # convert to grey here
-                if FLAGS.camera_mode == "grey":
-                    gray = np.array([0.2989, 0.5870, 0.1140])
-                    traj["observations"]["wrist"] = np.dot(traj["observations"]["wrist"], gray)[..., None]
-                    traj["next_observations"]["wrist"] = np.dot(traj["next_observations"]["wrist"], gray)[..., None]
-
                 replay_buffer.insert(traj)
         print(f"replay buffer size: {len(replay_buffer)}")
 

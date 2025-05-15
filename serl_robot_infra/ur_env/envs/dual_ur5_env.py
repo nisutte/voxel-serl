@@ -38,12 +38,16 @@ class DualUR5Env(gym.Env):
             self,
             env_left,
             env_right,
+            fake_env=False,
     ):
         self.env_left = env_left
         self.env_right = env_right
+        self.fake_env = fake_env
 
         assert self.env_left.camera_mode == self.env_right.camera_mode
         self.camera_mode = self.env_left.camera_mode
+
+        # TODO add relative position, orientation, velocities and more
 
         action_dim = len(self.env_left.action_space.low) + len(self.env_right.action_space.low)
         self.action_space = gym.spaces.Box(
@@ -67,7 +71,7 @@ class DualUR5Env(gym.Env):
             }
         )
 
-        if self.camera_mode is not None:
+        if self.camera_mode is not None and not self.fake_env:
             combined_queue = CombinedQueue(self.env_left.img_queue, self.env_right.img_queue)
             if self.camera_mode in ["pointcloud"]:
                 self.pc_displayer = DualPointCloudDisplayer()
@@ -106,7 +110,7 @@ class DualUR5Env(gym.Env):
             self.pc_displayer.display_left(self.env_left.displayer.get())
             self.pc_displayer.display_right(self.env_right.displayer.get())
 
-        # TODO check if int(left and right) is right!
+        # TODO make unique dual_reward function (can be combined with the individual ones)
         return ob, int(reward_left and reward_right), done_left or done_right, False, {}
 
     def reset(self, **kwargs):

@@ -133,24 +133,24 @@ class VoxNet(nn.Module):
             features=feature_dimensions[0],
             kernel_size=(5, 5, 5),
             strides=(2, 2, 2),
-            name="conv_5x5x5",
+            name=f"{'frozen_' if self.pretrained else ''}conv_5x5x5",
         )(x)
-        x = nn.LayerNorm()(x)
+        x = nn.LayerNorm(name=f"{'frozen_' if self.pretrained else ''}LayerNorm_0")(x)
         x = l_relu(x)  # shape (B, (X-3)/2, (Y-3)/2, (Z-3)/2, F)
 
         x = conv3d(
             features=feature_dimensions[1],
             kernel_size=(3, 3, 3),
             strides=(1, 1, 1),
-            name="conv_3x3x3"
+            name=f"{'frozen_' if self.pretrained else ''}conv_3x3x3"
         )(x)
         x = max_pool(x)
 
+        x = nn.LayerNorm(name=f"{'frozen_' if self.pretrained else ''}LayerNorm_1")(x)
+        x = l_relu(x)  # shape (B, (X-4)/2, (Y-4)/2, (Z-4)/2, F)
+
         if self.pretrained and not self.use_color:      # do not stop the gradient if we use color
             x = jax.lax.stop_gradient(x)
-
-        x = nn.LayerNorm()(x)
-        x = l_relu(x)  # shape (B, (X-4)/2, (Y-4)/2, (Z-4)/2, F)
 
         x = conv3d(
             features=feature_dimensions[2],            # if pretrained, only uses [..] out of 128 pretrained params as initial weights
@@ -171,3 +171,93 @@ class VoxNet(nn.Module):
             x = self.final_activation(x)
 
         return x[0] if no_batch_dim else x
+
+"""
+class PretrainedVoxnetBackbone(nn.Module):
+    """
+    #Pretrained VoxNet backbone that can be shared across models (use it frozen)
+    """
+
+    @nn.compact
+    def __call__(
+            self,
+            observations: jnp.ndarray,
+            encode: bool = True,
+            train: bool = True,
+    ):
+        conv3d = partial(nn.Conv, kernel_init=nn.initializers.xavier_normal(), use_bias=True,
+                         padding="valid", bias_init=nn.zeros_init())
+        l_relu = partial(nn.leaky_relu, negative_slope=0.1)
+
+        x = observations
+        x = conv3d(
+            features=64,
+            kernel_size=(5, 5, 5),
+            strides=(2, 2, 2),
+            name="conv_5x5x5",
+        )(x)
+        x = nn.BatchNorm()(x)
+        x = l_relu(x)  # shape (B, (X-3)/2, (Y-3)/2, (Z-3)/2, F)
+
+        x = conv3d(
+            features=64,
+            kernel_size=(3, 3, 3),
+            strides=(1, 1, 1),
+            name="conv_3x3x3"
+        )(x)
+
+        x = jax.lax.stop_gradient(x)
+        return x
+
+
+class VoxNetV2(nn.Module):
+    """
+    #Voxnet-like implementation with a backbone that can be shared
+    """
+    backbone: PretrainedVoxnetBackbone = None
+    bottleneck_dim: Optional[int] = None
+    final_activation: Callable[[jnp.ndarray], jnp.ndarray] | str = nn.tanh
+
+    @nn.compact
+    def __call__(
+            self,
+            observations: jnp.ndarray,
+            encode: bool = True,
+            train: bool = True,
+    ):
+        no_batch_dim = len(observations.shape) < 4
+        if no_batch_dim:
+            observations = observations[None]
+
+        observations = observations.astype(jnp.float32)[..., None]
+
+        conv3d = partial(nn.Conv, kernel_init=nn.initializers.xavier_normal(), use_bias=True,
+                         padding="valid", bias_init=nn.zeros_init())
+        l_relu = partial(nn.leaky_relu, negative_slope=0.1)
+        max_pool = partial(nn.max_pool, window_shape=(2, 2, 2), strides=(2, 2, 2))
+
+        x = observations
+        x = self.backbone(x, encode=encode, train=train)
+
+        x = max_pool(x)
+        x = nn.LayerNorm()(x)
+        x = l_relu(x)
+
+        x = conv3d(
+            features=32,
+            kernel_size=(2, 2, 2),
+            strides=(2, 2, 2),
+            name="conv_2x2x2"
+        )(x)
+        x = nn.LayerNorm()(x)
+        x = l_relu(x)
+
+        x = jnp.reshape(x, (1 if no_batch_dim else x.shape[0], -1))
+        if self.bottleneck_dim is not None:
+            x = nn.Dense(self.bottleneck_dim)(x)
+            x = nn.LayerNorm()(x)
+            x = self.final_activation(x)
+
+        return x[0] if no_batch_dim else x
+
+"""

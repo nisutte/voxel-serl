@@ -145,8 +145,8 @@ def make_drq_agent(
         temperature_init=1e-2,
         discount=0.99,  # 0.99
         backup_entropy=True,  # default: False
-        critic_ensemble_size=10,
-        critic_subsample_size=2,
+        critic_ensemble_size=2,         # todo do as hil serl, no more subsampling (5x less critic params)
+        critic_subsample_size=None,
         encoder_kwargs=encoder_kwargs,
         # dict(
         #     # pooling_method="spatial_softmax",        # default "spatial_learned_embeddings"
@@ -156,9 +156,11 @@ def make_drq_agent(
         # ),
         actor_optimizer_kwargs={
             "learning_rate": 3e-3,  # 3e-4
+            "freeze_backbone": True,
         },
         critic_optimizer_kwargs={
             "learning_rate": 3e-3,  # 3e-4
+            "freeze_backbone": True,
         },
     )
     return agent

@@ -258,14 +258,15 @@ class DrQAgent(SACAgent):
                 for image_key in image_keys
             }
         elif encoder_type in ["voxnet", "voxnet-pretrained", "voxnet-color", "voxnet-pretrained-color"]:
-            encoders = {
-                image_key: VoxNet(
+            voxnet = VoxNet(
                     bottleneck_dim=encoder_kwargs["bottleneck_dim"],
                     use_conv_bias=True,
                     final_activation=nn.tanh,
                     pretrained= "pretrained" in encoder_type,
                     use_color="color" in encoder_type,
                 )
+            encoders = {
+                image_key: voxnet       # use the same one
                 for image_key in image_keys
             }
         elif encoder_type.lower() == "none":
@@ -274,6 +275,8 @@ class DrQAgent(SACAgent):
             raise NotImplementedError(f"Unknown encoder type: {encoder_type}")
 
         state_mask_arr = create_state_mask(state_mask)
+        assert observations["state"].shape[1] % state_mask_arr.shape[0] == 0
+        state_mask_arr = jnp.repeat(state_mask_arr, observations["state"].shape[1] // state_mask_arr.shape[0], axis=0)
         print(f"state_mask: {state_mask}  {state_mask_arr.astype(jnp.int32)}")
         encoder_def = EncodingWrapper(
             encoder=encoders,
@@ -376,15 +379,13 @@ class DrQAgent(SACAgent):
                 }
             )
             actions = batched_random_rot90_action(actions, rng, only_180=only_180)
-
             # jax.debug.print("after {}  {}  {}\n", observations["state"][0, 0, :], next_observations["state"][0, 0, :], actions[0, :])
             # jax.debug.print("voxel after: \n{}", jnp.mean(observations[pixel_key][0, 0, ...].reshape((5, 10, 5, 10, 40)), axis=(1, 3, 4)))
             # jax.debug.print("action after: {}", actions[0, :])
-            return observations, next_observations, actions
+
+        return observations, next_observations, actions
 
     def image_augmentation_fn(self, obs_rng, observations, next_obs_rng, next_observations):
-        # TODO make it configurable: see https://github.com/rail-berkeley/serl/pull/67
-
         for pixel_key in self.config["image_keys"]:
             # pointcloud augmentation
             if "pointcloud" in pixel_key:
