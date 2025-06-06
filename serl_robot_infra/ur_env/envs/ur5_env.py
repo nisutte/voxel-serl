@@ -125,6 +125,7 @@ class DefaultEnvConfig:
     }
     VOXEL_PARAMS: Dict = {}
     CAMERA_PARAMS: Dict = {}
+    CALIBRATION_PATH: str = ""
 
 
 ##############################################################################

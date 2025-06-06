@@ -1,15 +1,24 @@
 import threading
 import time
+import copy
 import numpy as np
 import robotic as ry
 
 from scipy.spatial.transform import Rotation as R
 
 
-class ThreadedCollisionChecker:
+def urtde_to_rai(Q):
+    # not sure why they are offset, and this should probably be fixed in the kinematics, not here
+    tmp = copy.deepcopy(Q)
+    tmp[1] += np.pi / 2
+    tmp[3] += np.pi / 2
+    return tmp
+
+
+class ThreadedCollisionDetector:
     def __init__(self, robot_left_transform, robot_right_transform, distance_margin=0.005, frequency=10, headless=False):
         """
-        Initialize the collision checker with two robots.
+        Initialize the collision detector with two robots.
 
         :param robot_left_transform: 4x4 transformation matrix for the left robot.
         :param robot_right_transform: 4x4 transformation matrix for the right robot.
@@ -35,10 +44,11 @@ class ThreadedCollisionChecker:
             self.robot_right_name: np.zeros(len(self.robot_joint_names[self.robot_right_name])),
         }
 
-        # Threading setup
         self.distance_margin = distance_margin
         self.frequency = frequency
         self.headless = headless
+        self.T_robot_left_2_robot_right = np.linalg.inv(robot_left_transform) @ robot_right_transform
+
         self.collision_free = True
         self.running = False
         self.thread = None
@@ -82,7 +92,7 @@ class ThreadedCollisionChecker:
         :param joint_state: List of joint values.
         """
         if robot_name in self.robot_joint_states:
-            self.robot_joint_states[robot_name] = joint_state
+            self.robot_joint_states[robot_name] = urtde_to_rai(joint_state)
 
     def _collision_detection_loop(self):
         """
@@ -128,11 +138,11 @@ if __name__ == "__main__":
     np.set_printoptions(precision=3, suppress=1)
     print(left2right)
 
-    # Initialize the collision checker
-    collision_checker = ThreadedCollisionChecker(np.eye(4), left2right)
+    # Initialize the collision detector
+    collision_detector = ThreadedCollisionDetector(np.eye(4), left2right)
 
     # Start the collision detection thread
-    collision_checker.start()
+    collision_detector.start()
 
     try:
         # Simulate joint updates
@@ -142,11 +152,11 @@ if __name__ == "__main__":
             joints_right = np.array(
                 [-1.5708 - i * 0.04, np.pi / 3, 0, -1.5708 + np.pi / 2, -1.5708, 0.0])
 
-            collision_checker.update_joint_state("robot_left", joints_left)
-            collision_checker.update_joint_state("robot_right", joints_right)
+            collision_detector.update_joint_state("robot_left", joints_left)
+            collision_detector.update_joint_state("robot_right", joints_right)
 
-            print(f"Collision-free: {collision_checker.is_collision_free()}")
+            print(f"Collision-free: {collision_detector.is_collision_free()}")
             time.sleep(0.5)
     finally:
         # Stop the collision detection thread
-        collision_checker.stop()
+        collision_detector.stop()

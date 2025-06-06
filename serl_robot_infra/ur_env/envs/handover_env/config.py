@@ -13,7 +13,7 @@ class UR5DualCameraConfigRight(DefaultEnvConfig):
     ABS_POSE_RANGE_LIMITS = np.array([0.2, 0.9])
     ACTION_SCALE = np.array([0.02, 0.1, 1.], dtype=np.float32)
 
-    ROBOT_IP = "192.168.1.66"  # fot the vacuum pump
+    ROBOT_IP = "192.168.1.66"  # for the vacuum pump
     CONTROLLER_HZ: int = 100
     GRIPPER_TIMEOUT = 2000  # in milliseconds
     ZEROMQ_PUBLISHER_PORT: int = 5557
@@ -32,6 +32,7 @@ class UR5DualCameraConfigRight(DefaultEnvConfig):
             "center_offset": [-0.008, 0.1, -0.085 - 0.06],
         }
     }
+    CALIBRATION_PATH = "/home/nico/robot_ipc_control/calibration/T_cam_to_robot_base_left_20250523_153325.npy"
 
 
 class UR5DualCameraConfigLeft(UR5DualCameraConfigRight):
@@ -42,3 +43,4 @@ class UR5DualCameraConfigLeft(UR5DualCameraConfigRight):
     REALSENSE_CAMERAS = {
         "wrist": "218622277164"
     }
+    CALIBRATION_PATH = "/home/nico/robot_ipc_control/calibration/T_cam_to_robot_base_right_20250523_152927.npy"

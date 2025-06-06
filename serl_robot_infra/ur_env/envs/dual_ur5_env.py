@@ -4,7 +4,9 @@ import threading
 from typing import Dict, Tuple
 
 
-from ur_env.envs.ur5_env import ImageDisplayer, PointCloudDisplayer
+from ur_env.envs.ur5_env import ImageDisplayer, PointCloudDisplayer, UR5Env
+from ur_env.utils.collision_detection_old import CollisionDetection
+from ur_env.utils.threaded_collision_detection import ThreadedCollisionDetector
 
 
 class CombinedQueue:
@@ -36,8 +38,8 @@ class DualPointCloudDisplayer:
 class DualUR5Env(gym.Env):
     def __init__(
             self,
-            env_left,
-            env_right,
+            env_left: UR5Env,
+            env_right: UR5Env,
             fake_env=False,
     ):
         self.env_left = env_left
@@ -54,24 +56,33 @@ class DualUR5Env(gym.Env):
             np.ones((action_dim,), dtype=np.float32) * -1,
             np.ones((action_dim,), dtype=np.float32),
         )
-        image_dict = ({f"left/{key}": self.env_left.observation_space["images"][key] for key in
-                       self.env_left.observation_space["images"].keys()} |
-                      {f"right/{key}": self.env_right.observation_space["images"][key] for key in
-                       self.env_right.observation_space["images"].keys()})
 
         state_dict = ({f"left/{key}": self.env_left.observation_space["state"][key] for key in
                        self.env_left.observation_space["state"].keys()} |
                       {f"right/{key}": self.env_right.observation_space["state"][key] for key in
                        self.env_right.observation_space["state"].keys()})
 
-        self.observation_space = gym.spaces.Dict(
-            {
-                "state": gym.spaces.Dict(state_dict),
-                "images": gym.spaces.Dict(image_dict)
-            }
-        )
+        self.observation_space = gym.spaces.Dict({"state": gym.spaces.Dict(state_dict)})
 
-        if self.camera_mode is not None and not self.fake_env:
+        if self.camera_mode is not None:
+            image_dict = ({f"left/{key}": self.env_left.observation_space["images"][key] for key in
+                           self.env_left.observation_space["images"].keys()} |
+                          {f"right/{key}": self.env_right.observation_space["images"][key] for key in
+                           self.env_right.observation_space["images"].keys()})
+            self.observation_space["images"] = gym.spaces.Dict(image_dict)
+
+        if fake_env:
+            print("[DualUR5Env] is fake!")
+            return
+
+        # collision detection
+        T_base2left = np.load(env_left.config.CALIBRATION_PATH)
+        T_base2right = np.load(env_right.config.CALIBRATION_PATH)
+        T_left2right = np.linalg.inv(T_base2left) @ T_base2right
+        self.collision_detector = ThreadedCollisionDetector(np.eye(4), T_left2right, headless=False, distance_margin=0.03)
+        self.collision_detector.start()
+
+        if self.camera_mode is not None:
             combined_queue = CombinedQueue(self.env_left.img_queue, self.env_right.img_queue)
             if self.camera_mode in ["pointcloud"]:
                 self.pc_displayer = DualPointCloudDisplayer()
@@ -85,12 +96,12 @@ class DualUR5Env(gym.Env):
         action_right = action[len(action) // 2:]
 
         def step_env_left():
-            global ob_left, reward_left, done_left
-            ob_left, reward_left, done_left, _, _ = self.env_left.step(action_left)
+            global ob_left, reward_left, done_left, truncated_left
+            ob_left, reward_left, done_left, truncated_left, infos_left = self.env_left.step(action_left)
 
         def step_env_right():
-            global ob_right, reward_right, done_right
-            ob_right, reward_right, done_right, _, _ = self.env_right.step(action_right)
+            global ob_right, reward_right, done_right, truncated_right
+            ob_right, reward_right, done_right, truncated_right, infos_right = self.env_right.step(action_right)
 
         # Create threads for each function
         thread_left = threading.Thread(target=step_env_left)
@@ -105,13 +116,17 @@ class DualUR5Env(gym.Env):
         thread_right.join()
         ob = self.combine_obs(ob_left, ob_right)
 
+        print(f"is collision free: {self.collision_detector.is_collision_free()}")
+        truncated = truncated_left or truncated_right or not self.collision_detector.is_collision_free()
+        # TODO pass truncated into reward and reset
+
         # visualize pointcloud (has to be in the main thread)
         if self.camera_mode in ["pointcloud"]:
             self.pc_displayer.display_left(self.env_left.displayer.get())
             self.pc_displayer.display_right(self.env_right.displayer.get())
 
         # TODO make unique dual_reward function (can be combined with the individual ones)
-        return ob, int(reward_left and reward_right), done_left or done_right, False, {}
+        return ob, int(reward_left and reward_right), done_left or done_right, truncated, {}
 
     def reset(self, **kwargs):
         def reset_env_left():
@@ -133,12 +148,17 @@ class DualUR5Env(gym.Env):
         return ob, {}
 
     def combine_obs(self, ob_left, ob_right):
-        left_images = {f"left/{key}": ob_left["images"][key] for key in ob_left["images"].keys()}
-        right_images = {f"right/{key}": ob_right["images"][key] for key in ob_right["images"].keys()}
         left_state = {f"left/{key}": ob_left["state"][key] for key in ob_left["state"].keys()}
         right_state = {f"right/{key}": ob_right["state"][key] for key in ob_right["state"].keys()}
-        ob = {
-            "state": left_state | right_state,
-            "images": left_images | right_images
-        }
+        ob = {"state": left_state | right_state}
+
+        if self.camera_mode:
+            left_images = {f"left/{key}": ob_left["images"][key] for key in ob_left["images"].keys()}
+            right_images = {f"right/{key}": ob_right["images"][key] for key in ob_right["images"].keys()}
+            ob["images"] = left_images | right_images
+
+        if not self.fake_env:
+            self.collision_detector.update_joint_state("robot_left", self.env_left.curr_Q)
+            self.collision_detector.update_joint_state("robot_right", self.env_right.curr_Q)
+
         return ob

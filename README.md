@@ -13,6 +13,7 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 ## Handover TODO's
 
 - [x] Make dual robot pointcloud work
+- [ ] ReplayBuffer -> make successfull picks more likely to be picked
 - [ ] set up BT to grip a box at the start
 - [ ] set up start poses
 - [ ] come up with a good reward
