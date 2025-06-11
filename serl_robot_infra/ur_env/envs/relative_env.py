@@ -240,7 +240,7 @@ class BaseFrameRotation(gym.Wrapper):
         transformed_action = self.base_transform_action(action)
         obs, reward, done, truncated, info = self.env.step(transformed_action)
 
-        if "intervene_action" in info:      # TODO test
+        if "intervene_action" in info:
             info["intervene_action"] = self.transform_action_inv(info["intervene_action"])
 
         transformed_obs = self.base_transform_observation(obs)

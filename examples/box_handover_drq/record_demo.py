@@ -93,8 +93,6 @@ if __name__ == "__main__":
     if not os.access(file_dir, os.W_OK):
         raise PermissionError(f"No permission to write to {file_dir}")
 
-    # TODO done until here
-
     try:
         running_reward = 0.
         while success_count < success_needed:

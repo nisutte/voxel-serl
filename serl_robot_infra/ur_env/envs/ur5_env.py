@@ -288,7 +288,6 @@ class UR5Env(gym.Env):
             time.sleep(0.1)
         print("[RIC] Controller has started and is ready!")
 
-        # TODO make one for rgb pointcloud
         if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
             voxel_grid_shape = np.array(self.observation_space["images"]["wrist_pointcloud"].shape)
             if voxel_grid_shape.shape[0] == 4:
@@ -298,7 +297,7 @@ class UR5Env(gym.Env):
             print(f"pointcloud resolution set to: {voxel_grid_shape}")
             self.pointcloud_fusion = PointCloudFusion(self.config.CAMERA_PARAMS, self.config.VOXEL_PARAMS)
 
-            # TODO add calibration back in
+            # calibration is disabled for now
             # if False:
             #     self.calibration_thread = CalibrationTread(pc_fusion=self.pointcloud_fusion, verbose=True)
             #     self.calibration_thread.start()

@@ -23,8 +23,6 @@ class BoxPickingBasicEnv(UR5Env):
         suck_cost = 0.1 * float(is_close(gripper_state[0], 0.99))
 
         pose = obs["state"]["tcp_pose"]
-        # box_xy = np.array([0.009, -0.5437])     # TODO replace with camera / pointcloud info of box
-        # xy_cost = 5 * np.sum(np.power(pose[:2] - box_xy, 2))        # TODO can be ignored
 
         # print(f"action_cost: {action_cost}, xy_cost: {xy_cost}")
         if self.reached_goal_state(obs):

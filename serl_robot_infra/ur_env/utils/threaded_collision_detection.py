@@ -47,7 +47,6 @@ class ThreadedCollisionDetector:
         self.distance_margin = distance_margin
         self.frequency = frequency
         self.headless = headless
-        self.T_robot_left_2_robot_right = np.linalg.inv(robot_left_transform) @ robot_right_transform
 
         self.collision_free = True
         self.running = False

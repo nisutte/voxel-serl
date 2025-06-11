@@ -50,8 +50,6 @@ class DualUR5Env(gym.Env):
         assert self.env_left.camera_mode == self.env_right.camera_mode
         self.camera_mode = self.env_left.camera_mode
 
-        # TODO add relative position, orientation, velocities and more
-
         action_dim = len(self.env_left.action_space.low) + len(self.env_right.action_space.low)
         self.action_space = gym.spaces.Box(
             np.ones((action_dim,), dtype=np.float32) * -1,
