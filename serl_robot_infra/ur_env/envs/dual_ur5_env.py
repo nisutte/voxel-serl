@@ -2,11 +2,12 @@ import numpy as np
 import gymnasium as gym
 import threading
 from typing import Dict, Tuple
+from pprint import pprint
 
 
 from ur_env.envs.ur5_env import ImageDisplayer, PointCloudDisplayer, UR5Env
-from ur_env.utils.collision_detection_old import CollisionDetection
 from ur_env.utils.threaded_collision_detection import ThreadedCollisionDetector
+from ur_env.utils.transformations import T_to_pose, pose_to_T, vel_difference, apply_rotation
 
 
 class CombinedQueue:
@@ -62,6 +63,11 @@ class DualUR5Env(gym.Env):
                       {f"right/{key}": self.env_right.observation_space["state"][key] for key in
                        self.env_right.observation_space["state"].keys()})
 
+        state_dict["l2r/tcp_pose"] = gym.spaces.Box(-np.inf, np.inf, shape=(7,))
+        state_dict["r2l/tcp_pose"] = gym.spaces.Box(-np.inf, np.inf, shape=(7,))
+        state_dict["l2r/tcp_vel"] = gym.spaces.Box(-np.inf, np.inf, shape=(6,))
+        state_dict["r2l/tcp_vel"] = gym.spaces.Box(-np.inf, np.inf, shape=(6,))
+
         self.observation_space = gym.spaces.Dict({"state": gym.spaces.Dict(state_dict)})
 
         if self.camera_mode is not None:
@@ -78,8 +84,9 @@ class DualUR5Env(gym.Env):
         # collision detection
         T_base2left = np.load(env_left.config.CALIBRATION_PATH)
         T_base2right = np.load(env_right.config.CALIBRATION_PATH)
-        T_left2right = np.linalg.inv(T_base2left) @ T_base2right
-        self.collision_detector = ThreadedCollisionDetector(np.eye(4), T_left2right, headless=False, distance_margin=0.03)
+        self.T_left2right = np.linalg.inv(T_base2left) @ T_base2right
+        self.T_right2left = np.linalg.inv(self.T_left2right)
+        self.collision_detector = ThreadedCollisionDetector(np.eye(4), self.T_left2right, headless=False, distance_margin=0.03)
         self.collision_detector.start()
 
         if self.camera_mode is not None:
@@ -96,12 +103,12 @@ class DualUR5Env(gym.Env):
         action_right = action[len(action) // 2:]
 
         def step_env_left():
-            global ob_left, reward_left, done_left, truncated_left
-            ob_left, reward_left, done_left, truncated_left, infos_left = self.env_left.step(action_left)
+            global ob_left, truncated_left
+            ob_left, _, _, truncated_left, infos_left = self.env_left.step(action_left)
 
         def step_env_right():
-            global ob_right, reward_right, done_right, truncated_right
-            ob_right, reward_right, done_right, truncated_right, infos_right = self.env_right.step(action_right)
+            global ob_right, truncated_right
+            ob_right, _, _, truncated_right, infos_right = self.env_right.step(action_right)
 
         # Create threads for each function
         thread_left = threading.Thread(target=step_env_left)
@@ -118,7 +125,12 @@ class DualUR5Env(gym.Env):
 
         print(f"is collision free: {self.collision_detector.is_collision_free()}")
         truncated = truncated_left or truncated_right or not self.collision_detector.is_collision_free()
-        # TODO pass truncated into reward and reset
+        done = self.env_left.curr_path_length >= self.env_left.max_episode_length or truncated
+        # TODO add goal state to done
+
+        # TODO make reward calculation
+        # reward = self.compute_reward()
+        reward = 0
 
         # visualize pointcloud (has to be in the main thread)
         if self.camera_mode in ["pointcloud"]:
@@ -126,7 +138,7 @@ class DualUR5Env(gym.Env):
             self.pc_displayer.display_right(self.env_right.displayer.get())
 
         # TODO make unique dual_reward function (can be combined with the individual ones)
-        return ob, int(reward_left and reward_right), done_left or done_right, truncated, {}
+        return ob, reward, done, truncated, {}
 
     def reset(self, **kwargs):
         def reset_env_left():
@@ -150,7 +162,20 @@ class DualUR5Env(gym.Env):
     def combine_obs(self, ob_left, ob_right):
         left_state = {f"left/{key}": ob_left["state"][key] for key in ob_left["state"].keys()}
         right_state = {f"right/{key}": ob_right["state"][key] for key in ob_right["state"].keys()}
-        ob = {"state": left_state | right_state}
+
+        # T_l2r = T_eeLeft2baseLeft @ T_baseLeft2baseRight @ T_baseRight2eeRight
+        T_l2r = np.linalg.inv(pose_to_T(ob_left["state"]["tcp_pose"])) @ self.T_left2right @ pose_to_T(ob_left["state"]["tcp_pose"])
+
+        right_vel_in_left = apply_rotation(ob_right["state"]["tcp_vel"], self.T_right2left, quat=False)
+        left_vel_in_right = apply_rotation(ob_left["state"]["tcp_vel"], self.T_left2right, quat=False)
+
+        diff = {
+            "l2r/tcp_pose": T_to_pose(T_l2r),
+            "l2r/tcp_vel": vel_difference(ob_left["state"]["tcp_vel"], right_vel_in_left),
+            "r2l/tcp_pose": T_to_pose(np.linalg.inv(T_l2r)),
+            "r2l/tcp_vel": vel_difference(ob_right["state"]["tcp_vel"], left_vel_in_right),
+        }
+        ob = {"state": left_state | right_state | diff}
 
         if self.camera_mode:
             left_images = {f"left/{key}": ob_left["images"][key] for key in ob_left["images"].keys()}

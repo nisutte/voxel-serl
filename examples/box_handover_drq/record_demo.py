@@ -7,14 +7,14 @@ import datetime
 import os
 import threading
 from pynput import keyboard
+from pprint import pprint
 
 from ur_env.envs.camera_env.box_picking_camera_env import UR5Env
+from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualSpaceMouseIntervention, DualScaleObservationWrapper
 from ur_env.envs.handover_env.box_handover_env import UR5HandoverEnv
-from ur_env.envs.relative_env import RelativeFrame, BaseFrameRotation
-from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper, ObservationRotationWrapper, \
-    DualSpaceMouseIntervention
+from ur_env.envs.relative_env import DualRelativeFrame
 
-from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper, ScaleObservationWrapper
+from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper
 from serl_launcher.wrappers.chunking import ChunkingWrapper
 
 from serl_robot_infra.ur_env.envs.handover_env import UR5DualCameraConfigRight, UR5DualCameraConfigLeft
@@ -38,7 +38,7 @@ def on_esc(key):
 
 if __name__ == "__main__":
     fake_env = False
-    camera_mode = "pointcloud"
+    camera_mode = "none"
 
     left_env = UR5Env(
         fake_env = fake_env,
@@ -54,26 +54,18 @@ if __name__ == "__main__":
         visualize_camera_mode=False,
     )
 
-    # left_env = BaseFrameRotation(left_env, rx=np.pi/4.)
-    # right_env = BaseFrameRotation(right_env, rx=-np.pi/4.)
-
-    left_env = RelativeFrame(left_env)
-    right_env = RelativeFrame(right_env)
-
-    left_env = ToMrpWrapper(left_env)
-    right_env = ToMrpWrapper(right_env)
-
-    left_env = ScaleObservationWrapper(left_env)
-    right_env = ScaleObservationWrapper(right_env)
-
     env = UR5HandoverEnv(
         env_left=left_env,
         env_right=right_env,
     )
+
+    env = DualRelativeFrame(env)
+    env = DualToMrpWrapper(env)
+    env = DualScaleObservationWrapper(env)
+
     if not fake_env:
         env = DualSpaceMouseIntervention(env)
 
-    # env = ObservationRotationWrapper(env)       # if it should be enabled
     env = SERLObsWrapper(env)
     env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
 
@@ -109,7 +101,8 @@ if __name__ == "__main__":
             if exit_program.is_set():
                 raise KeyboardInterrupt  # stop program, but clean up before
 
-            next_obs, rew, done, truncated, info = env.step(action=np.zeros((14,)))
+            action = np.array([0., 0., 0., 0., 0., 0., 0.])     # for testing
+            next_obs, rew, done, truncated, info = env.step(np.concatenate((action, action)))
             actions = info["intervene_action"]
 
             transition = copy.deepcopy(
@@ -123,7 +116,7 @@ if __name__ == "__main__":
                 )
             )
             transitions.append(transition)
-            # print(next_obs["state"])
+            # pprint(next_obs["state"])
 
             obs = next_obs
             running_reward += rew
