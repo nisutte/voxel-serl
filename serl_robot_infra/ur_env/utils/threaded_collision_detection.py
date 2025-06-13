@@ -59,7 +59,7 @@ class ThreadedCollisionDetector:
         :param robot_name: Name of the robot.
         :param transform: 4x4 transformation matrix for the robot.
         """
-        robot_path = "/home/nico/robot_ipc_control/pose_estimation/ur5/ur5_vacuum.g"
+        robot_path = "/home/nico/robot_ipc_control/pose_estimation/ur5/ur5_vacuum_inflated.g"
         pos = transform[:3, 3]
         x, y, z, w = R.from_matrix(transform[:3, :3]).as_quat()
         quat_wfirst = (w, x, y, z)
