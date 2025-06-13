@@ -1,10 +1,11 @@
 import gymnasium as gym
 import numpy as np
 from agentlace import action
+import time
+from typing import Tuple
 
 from ur_env.spacemouse.spacemouse_expert import SpaceMouseExpert
 from ur_env.spacemouse.fake_spacemouse import FakeSpaceMouseExpert
-import time
 from scipy.spatial.transform import Rotation as R
 
 from ur_env.utils.rotations import quat_2_euler, quat_2_mrp, rotvec_2_mrp
@@ -14,12 +15,12 @@ ROT_GENERAL = np.array([np.eye(3), ROT90, ROT90 @ ROT90, ROT90.transpose()])
 
 
 class SpacemouseIntervention(gym.ActionWrapper):
-    def __init__(self, env, gripper_action_span=3):
+    def __init__(self, env, gripper_action_span=3, device_number: int = 0):
         super().__init__(env)
         self.gripper_enabled = True
 
         try:
-            self.expert = SpaceMouseExpert()
+            self.expert = SpaceMouseExpert(device_number=device_number)
         except Exception as e:
             self.expert = FakeSpaceMouseExpert()
             print(f"openend fake SpacemouseExpert since: {e}")
@@ -31,7 +32,7 @@ class SpacemouseIntervention(gym.ActionWrapper):
         self.invert_axes = [-1, -1, 1, -1, -1, 1]
         self.deadspace = 0.15
 
-    def action(self, action: np.ndarray) -> np.ndarray:
+    def action(self, action: np.ndarray) -> Tuple[np.ndarray, bool]:
         """
         Input:
         - action: policy action
@@ -49,10 +50,10 @@ class SpacemouseIntervention(gym.ActionWrapper):
             expert_a = np.concatenate((expert_a, gripper_action), axis=0)
 
         if time.time() - self.last_intervene < 0.5:
-            expert_a = self.adapt_spacemouse_output(expert_a)
-            return expert_a
+            # expert_a = self.adapt_spacemouse_output(expert_a)
+            return expert_a, True
 
-        return action
+        return action, False
 
     def get_deadspace_action(self) -> np.ndarray:
         expert_a, buttons = self.expert.get_action()
@@ -88,12 +89,40 @@ class SpacemouseIntervention(gym.ActionWrapper):
         return action
 
     def step(self, action):
-        new_action = self.action(action)
+        new_action, replaced = self.action(action)
         # print(f"new action: {new_action}")
         obs, rew, done, truncated, info = self.env.step(new_action)
         info["intervene_action"] = new_action
         info["left"] = self.left.any()
         info["right"] = self.right.any()
+        return obs, rew, done, truncated, info
+
+
+class DualSpaceMouseIntervention(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+        self.expert_left = SpacemouseIntervention(env, device_number=1)
+        self.expert_right = SpacemouseIntervention(env, device_number=4)
+
+    def step(self, action):
+        action_left = action[:7]
+        action_right = action[7:]
+
+        new_action_left, replaced_left = self.expert_left.action(action_left)
+        new_action_right, replaced_right = self.expert_right.action(action_right)
+        new_action = np.concatenate((new_action_left, new_action_right), axis=0)
+
+        obs, rew, done, truncated, info = self.env.step(new_action)
+
+        if replaced_left or replaced_right:
+            info["hil_action"] = new_action
+
+        info["intervene_action"] = new_action
+
+        info["left"] = self.expert_left.left.any() or self.expert_right.left.any()  # Whether the left button is pressed.
+        info["right"] = self.expert_left.right.any() or self.expert_right.right.any()  # Whether the right button is pressed.
+
         return obs, rew, done, truncated, info
 
 
@@ -163,7 +192,7 @@ class ObservationRotationWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, info = self.env.reset()
-        obs = self.rotate_observation(obs, random=True)     # rotate initial state random
+        obs = self.rotate_observation(obs, random=True)  # rotate initial state random
         return obs, info
 
     def step(self, action: np.ndarray):

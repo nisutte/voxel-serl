@@ -9,38 +9,6 @@ from ur_env.envs.wrappers import SpacemouseIntervention
 from ur_env.utils.rotations import quat_2_mrp, rotvec_2_mrp
 
 
-class DualSpaceMouseIntervention(SpacemouseIntervention):
-    """double the spacemouse input to test the dual robot setup"""
-    def __init__(self, env):
-        super().__init__(env)
-
-    def action(self, action):
-        expert_a = self.get_deadspace_action()
-
-        if np.linalg.norm(
-                expert_a) > 0.001 or self.left.any() or self.right.any():  # also read buttons with no movement
-            self.last_intervene = time.time()
-
-        if self.gripper_enabled:
-            gripper_action = np.zeros((1,)) + int(self.left.any()) - int(self.right.any())
-            expert_a = np.concatenate((expert_a, gripper_action), axis=0)
-
-        if time.time() - self.last_intervene < 0.5:
-            expert_b = expert_a.copy()
-            expert_b *= np.asarray([1, 1, 1, 1, 1, 1, 1])
-            return np.concatenate((expert_a, expert_b), axis=0)
-
-        return action
-
-    def step(self, action):
-        new_action = self.action(action)
-        obs, rew, done, truncated, info = self.env.step(new_action)
-        info["intervene_action"] = new_action
-        info["left"] = self.left.any()
-        info["right"] = self.right.any()
-        return obs, rew, done, truncated, info
-
-
 class DualToMrpWrapper(gym.ObservationWrapper):
     """
     Convert the quaternion representation of the tcp pose to mrp angles

@@ -31,6 +31,10 @@ class SimpleBehaviorTree:
         self.env.send_pos_command(pose)
 
     def pickup(self) -> bool:
+        if self.env.gripper_state[1] > 0.5:
+            self.pickup_done.set()
+            return True
+
         pickup_Q = [-0.7027, -0.8565, 1.1014, -1.8162, -1.5657, -0.7058]
         self.env.send_reset_command(np.asarray(pickup_Q))
         i = 0
@@ -74,7 +78,7 @@ class UR5HandoverEnv(DualUR5Env):
             time.sleep(0.5)
             while not BTright.pickup():
                 time.sleep(0.5)
-            self.env_right.controller.auto_release_gripper(False)
+            self.env_right.controller.auto_release_gripper(True)
             ob_right, _ = self.env_right.reset(**kwargs)
             self.env_right.controller.auto_release_gripper(True)
 
@@ -144,6 +148,8 @@ class UR5HandoverEnv(DualUR5Env):
                 - orientation_cost - position_cost + retreat_reward
 
     def dropped_parcel(self, obs) -> bool:
+        return False
+        # TODO activate if it is not annoying anymore
         state = obs["state"]
         # left gripper not gripping, right gripper not gripping
         return state['left/gripper_state'][1] < 0.5 and state["right/gripper_state"][1] < 0.5
@@ -156,7 +162,10 @@ class UR5HandoverEnv(DualUR5Env):
         return self.goal_state_increment > 4
 
     def _is_truncated(self, obs):
-        return self.dropped_parcel(obs) or not self.collision_detector.is_collision_free()
+        collision = not self.collision_detector.is_collision_free()
+        if collision:
+            print(self.collision_detector.collision_msg)
+        return self.dropped_parcel(obs) or collision
 
     def close(self):
         super().close()

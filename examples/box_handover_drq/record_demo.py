@@ -10,7 +10,7 @@ from pynput import keyboard
 from pprint import pprint
 
 from ur_env.envs.camera_env.box_picking_camera_env import UR5Env
-from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualSpaceMouseIntervention, DualScaleObservationWrapper
+from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualScaleObservationWrapper
 from ur_env.envs.handover_env.box_handover_env import UR5HandoverEnv
 from ur_env.envs.relative_env import DualRelativeFrame
 
@@ -20,6 +20,7 @@ from serl_launcher.wrappers.chunking import ChunkingWrapper
 from serl_robot_infra.ur_env.envs.handover_env import UR5DualCameraConfigRight, UR5DualCameraConfigLeft
 
 import ur_env
+from ur_env.envs.wrappers import DualSpaceMouseIntervention
 
 exit_program = threading.Event()
 
@@ -38,7 +39,7 @@ def on_esc(key):
 
 if __name__ == "__main__":
     fake_env = False
-    camera_mode = "none"
+    camera_mode = "pointcloud"
 
     left_env = UR5Env(
         fake_env = fake_env,
