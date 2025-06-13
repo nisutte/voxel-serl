@@ -15,21 +15,20 @@ class SimpleBehaviorTree:
     def retreat(self):
         self.env.update_currpos()
         back = self.env.curr_pos.copy()
-        back[1] = 0.5
-        self.move_to_pose(back)
+        if back[1] > 0.5:
+            back[1] = 0.5
+            self.move_to_pose(back)
 
     def move_to_pose(self, pose, velocity=0.001):
         self.env.update_currpos()
         old = self.env.curr_pos
         max_pos_diff = np.max(np.abs(old - pose)[:3])
-        N = int(max_pos_diff/velocity)
-        print(N)
+        N = int(max_pos_diff / velocity)
         for i in range(N):
-            alpha = (1. - np.cos(i/N * np.pi)) / 2.
+            alpha = (1. - np.cos(i / N * np.pi)) / 2.
             self.env.send_pos_command(alpha * pose + (1. - alpha) * old)
             time.sleep(0.02)
         self.env.send_pos_command(pose)
-        print(f"moved to pose {pose}")
 
     def pickup(self) -> bool:
         pickup_Q = [-0.7027, -0.8565, 1.1014, -1.8162, -1.5657, -0.7058]
@@ -57,6 +56,7 @@ class SimpleBehaviorTree:
 class UR5HandoverEnv(DualUR5Env):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.goal_state_increment: int = 0
 
     def reset(self, **kwargs):
         BTleft, BTright = SimpleBehaviorTree(self.env_left), SimpleBehaviorTree(self.env_right)
@@ -72,10 +72,11 @@ class UR5HandoverEnv(DualUR5Env):
             global ob_right
             BTright.retreat()
             time.sleep(0.5)
-            self.env_right.send_reset_command(np.asarray([-0.7027, -0.8565,  1.1014, -1.8162, -1.5657, -0.7058]))
             while not BTright.pickup():
                 time.sleep(0.5)
+            self.env_right.controller.auto_release_gripper(False)
             ob_right, _ = self.env_right.reset(**kwargs)
+            self.env_right.controller.auto_release_gripper(True)
 
         thread_left = threading.Thread(target=reset_env_left)
         thread_right = threading.Thread(target=reset_env_right)
@@ -84,8 +85,78 @@ class UR5HandoverEnv(DualUR5Env):
         thread_left.join()
         thread_right.join()
 
+        self.goal_state_increment = 0
         ob = self.combine_obs(ob_left, ob_right)
         return ob, {}
+
+    def compute_reward(self, obs, action) -> float:
+        state = obs["state"]
+
+        step_cost = 0.1
+        action_cost = 0.1 * np.sum(np.power(action, 2))
+        action_diff_cost = 0.5 * np.sum(np.power(action - self.last_action, 2))
+        self.last_action = action
+
+        suction_reward = 0.3 * float(state["left/gripper_state"][1] > 0.5)
+        suction_cost = 3. * float(state["left/gripper_state"][1] < -0.5)
+        dropping_penalty = 1 if self.dropped_parcel(obs) else 0
+
+        cutoff_dist = 0.07
+        pos_diff_left = state["left/tcp_pose"][:3] - self.env_left.curr_reset_pose[:3]
+        pos_diff_right = state["right/tcp_pose"][:3] - self.env_right.curr_reset_pose[:3]
+        position_cost_left = 10. * np.sum(
+            np.where(np.abs(pos_diff_left) > cutoff_dist, np.abs(pos_diff_left - np.sign(pos_diff_left) * cutoff_dist),
+                     0.0))
+        position_cost_right = 10. * np.sum(
+            np.where(np.abs(pos_diff_right) > cutoff_dist,
+                     np.abs(pos_diff_right - np.sign(pos_diff_right) * cutoff_dist), 0.0))
+        position_cost = position_cost_left + position_cost_right
+
+        orientation_cost_left = 1. - sum(state["left/tcp_pose"][3:] * self.env_left.curr_reset_pose[3:]) ** 2
+        orientation_cost_left = max(orientation_cost_left - 0.005, 0.) * 25.
+        orientation_cost_right = 1. - sum(state["right/tcp_pose"][3:] * self.env_right.curr_reset_pose[3:]) ** 2
+        orientation_cost_right = max(orientation_cost_right - 0.005, 0.) * 25.
+        orientation_cost = orientation_cost_left + orientation_cost_right
+
+        retreat_reward = 1. * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
+
+        cost_info = dict(
+            step_cost=step_cost,
+            action_cost=action_cost,
+            action_diff_cost=action_diff_cost,
+            suction_reward=suction_reward,
+            suction_cost=suction_cost,
+            dropping_penalty=dropping_penalty,
+            orientation_cost=orientation_cost,
+            position_cost=position_cost,
+            retreat_reward=retreat_reward,
+            total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_penalty
+                         - orientation_cost - position_cost + retreat_reward)
+        )
+        for key, info in cost_info.items():
+            self.cost_infos[key] = info + (0. if key not in self.cost_infos else self.cost_infos[key])
+
+        if self.reached_goal_state(obs):
+            self.last_action[:] = 0.
+            return 100. - action_cost - action_diff_cost - orientation_cost - position_cost + retreat_reward
+        else:
+            return 0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_penalty \
+                - orientation_cost - position_cost + retreat_reward
+
+    def dropped_parcel(self, obs) -> bool:
+        state = obs["state"]
+        # left gripper not gripping, right gripper not gripping
+        return state['left/gripper_state'][1] < 0.5 and state["right/gripper_state"][1] < 0.5
+
+    def reached_goal_state(self, obs) -> bool:
+        state = obs["state"]
+        # left gripper gripping, right gripper not gripping
+        goal_state = state['left/gripper_state'][1] > 0.5 and state["right/gripper_state"][1] < 1.
+        self.goal_state_increment = self.goal_state_increment + 1 if goal_state else 0
+        return self.goal_state_increment > 4
+
+    def _is_truncated(self, obs):
+        return self.dropped_parcel(obs) or not self.collision_detector.is_collision_free()
 
     def close(self):
         super().close()
