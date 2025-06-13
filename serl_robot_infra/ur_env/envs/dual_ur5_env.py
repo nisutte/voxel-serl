@@ -47,6 +47,8 @@ class DualUR5Env(gym.Env):
         self.env_right = env_right
         self.fake_env = fake_env
 
+        self.cost_infos = {}
+
         assert self.env_left.camera_mode == self.env_right.camera_mode
         self.camera_mode = self.env_left.camera_mode
 
@@ -55,6 +57,7 @@ class DualUR5Env(gym.Env):
             np.ones((action_dim,), dtype=np.float32) * -1,
             np.ones((action_dim,), dtype=np.float32),
         )
+        self.last_action = np.zeros(self.action_space.shape)
 
         state_dict = ({f"left/{key}": self.env_left.observation_space["state"][key] for key in
                        self.env_left.observation_space["state"].keys()} |
@@ -84,7 +87,7 @@ class DualUR5Env(gym.Env):
         T_base2right = np.load(env_right.config.CALIBRATION_PATH)
         self.T_left2right = np.linalg.inv(T_base2left) @ T_base2right
         self.T_right2left = np.linalg.inv(self.T_left2right)
-        self.collision_detector = ThreadedCollisionDetector(np.eye(4), self.T_left2right, headless=False, distance_margin=0.03)
+        self.collision_detector = ThreadedCollisionDetector(np.eye(4), self.T_left2right, headless=False, distance_margin=0.04)
         self.collision_detector.start()
 
         if self.camera_mode is not None:
@@ -95,6 +98,21 @@ class DualUR5Env(gym.Env):
                 self.displayer = ImageDisplayer(combined_queue)
                 self.displayer.start()
 
+    def compute_reward(self, obs, action) -> float:
+        raise NotImplementedError  # overwrite for each task
+
+    def reached_goal_state(self, obs) -> bool:
+        raise NotImplementedError  # overwrite for each task
+
+    def _is_truncated(self, obs) -> bool:
+        raise NotImplementedError    # overwrite for each task
+
+    def get_cost_infos(self, done):
+        if not done:
+            return {}
+        cost_infos = self.cost_infos.copy()
+        self.cost_infos = {}
+        return cost_infos
 
     def step(self, action: np.ndarray) -> tuple:
         action_left = action[:len(action) // 2]
@@ -119,24 +137,18 @@ class DualUR5Env(gym.Env):
         # Wait for both threads to complete
         thread_left.join()
         thread_right.join()
-        ob = self.combine_obs(ob_left, ob_right)
+        obs = self.combine_obs(ob_left, ob_right)
 
-        print(f"is collision free: {self.collision_detector.is_collision_free()}")
-        truncated = truncated_left or truncated_right or not self.collision_detector.is_collision_free()
-        done = self.env_left.curr_path_length >= self.env_left.max_episode_length or truncated
-        # TODO add goal state to done
-
-        # TODO make reward calculation
-        # reward = self.compute_reward()
-        reward = 0
+        truncated = truncated_left or truncated_right or self._is_truncated(obs)
+        done = self.env_left.curr_path_length >= self.env_left.max_episode_length or truncated or self.reached_goal_state(obs)
+        reward = self.compute_reward(obs, action)
 
         # visualize pointcloud (has to be in the main thread)
         if self.camera_mode in ["pointcloud"]:
             self.pc_displayer.display_left(self.env_left.displayer.get())
             self.pc_displayer.display_right(self.env_right.displayer.get())
 
-        # TODO make unique dual_reward function (can be combined with the individual ones)
-        return ob, reward, done, truncated, {}
+        return obs, reward, done, truncated, self.get_cost_infos(done)
 
     def reset(self, **kwargs):
         def reset_env_left():
