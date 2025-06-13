@@ -40,9 +40,10 @@ from serl_launcher.data.data_store import MemoryEfficientReplayBufferDataStore
 from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper, ScaleObservationWrapper
 from serl_launcher.wrappers.observation_statistics_wrapper import ObservationStatisticsWrapper
 from ur_env.envs import UR5Env
+from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualScaleObservationWrapper
 from ur_env.envs.handover_env import UR5DualCameraConfigLeft, UR5DualCameraConfigRight
 from ur_env.envs.handover_env.box_handover_env import UR5HandoverEnv
-from ur_env.envs.relative_env import RelativeFrame
+from ur_env.envs.relative_env import RelativeFrame, DualRelativeFrame
 from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper, ObservationRotationWrapper, \
     DualSpaceMouseIntervention
 from serl_launcher.vision.data_augmentations import batched_random_rot90_state, batched_random_rot90_voxel, \
@@ -69,7 +70,7 @@ flags.DEFINE_bool("save_model", False, "Whether to save model.")
 flags.DEFINE_integer("batch_size", 256, "Batch size.")
 flags.DEFINE_integer("utd_ratio", 8, "UTD ratio.")
 
-flags.DEFINE_string("state_mask", "no_ForceTorque",
+flags.DEFINE_string("state_mask", "all",
                     "if all the states should be considered, possible: (all, none, no_ForceTorque, gripper, position_gripper)")
 flags.DEFINE_string("encoder_type", "voxnet-pretrained", "Encoder type.")
 flags.DEFINE_integer("encoder_bottleneck_dim", 128, "bottleneck dimension of the encoder")
@@ -475,7 +476,6 @@ def main(_):
     # seed
     rng = jax.random.PRNGKey(FLAGS.seed)
 
-    # create env and load dataset
     left_env = UR5Env(
         fake_env=FLAGS.learner,
         config=UR5DualCameraConfigLeft,
@@ -490,23 +490,22 @@ def main(_):
         visualize_camera_mode=False,
     )
 
-    left_env = RelativeFrame(left_env)
-    right_env = RelativeFrame(right_env)
-
-    left_env = ToMrpWrapper(left_env)
-    right_env = ToMrpWrapper(right_env)
-
-    left_env = ScaleObservationWrapper(left_env)
-    right_env = ScaleObservationWrapper(right_env)
-
     env = UR5HandoverEnv(
-        fake_env=FLAGS.learner,
         env_left=left_env,
         env_right=right_env,
     )
 
+    env = DualRelativeFrame(env)
+    env = DualToMrpWrapper(env)
+    env = DualScaleObservationWrapper(env)
+    env = ObservationStatisticsWrapper(env)
+
+    # if FLAGS.actor:
+    #     env = DualSpaceMouseIntervention(env)
+
     env = SERLObsWrapper(env)
     env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
+    env = RecordEpisodeStatistics(env)
 
     image_keys = [key for key in env.observation_space.keys() if key != "state"]
     print(f"image keys: {image_keys}")

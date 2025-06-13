@@ -47,6 +47,7 @@ class ThreadedCollisionDetector:
         self.distance_margin = distance_margin
         self.frequency = frequency
         self.headless = headless
+        self.collision_msg = ""
 
         self.collision_free = True
         self.running = False
@@ -107,7 +108,8 @@ class ThreadedCollisionDetector:
             self.collision_free = len(collisions) < 1
             if not self.collision_free:
                 for c in collisions:
-                    print(f"collision detected between {c[0]} and {c[1]} with distance {c[2] * 100} cm")
+                    self.collision_msg = f"collision detected between {c[0]} and {c[1]} with distance {c[2] * 100} cm"
+                    # print(f"collision detected between {c[0]} and {c[1]} with distance {c[2] * 100} cm")
 
             if not self.headless:
                 self.C.view(False)
