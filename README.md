@@ -13,13 +13,15 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 ## Handover TODO's
 
 - [x] Make dual robot pointcloud work
-- [ ] ReplayBuffer -> make successfull picks more likely to be picked
-- [ ] set up BT to grip a box at the start
-- [ ] set up start poses
-- [ ] come up with a good reward
-- [ ] collision detection between robots
-- [ ] add difference parameters between the EE
+- [x] set up BT to grip a box at the start
+- [x] set up start poses
+- [x] come up with a good reward
+- [x] collision detection between robots
+- [x] add difference parameters between the EE
 - [x] share the same voxnet backbone (less gpu mem, also can be frozen)
+- [ ] ReplayBuffer -> make successfull picks more likely to be picked
+- [ ] do some demos and first training runs
+- [ ] examine ensemble sizes and subsampling
 
 
 ## Contributions
