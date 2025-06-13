@@ -3,14 +3,13 @@ import numpy as np
 
 
 class UR5DualCameraConfigRight(DefaultEnvConfig):
-    p = np.pi / 2.
-    RESET_Q = np.array([[-p, -p, p, -p, -p, 0.]])
+    RESET_Q = np.array([[-1.7415, -1.8875,  1.9666, -3.2068, -1.5384,  1.4565]])
     RANDOM_RESET = False
     RANDOM_XY_RANGE = (0.00,)
     RANDOM_ROT_RANGE = (0.0,)
-    ABS_POSE_LIMIT_HIGH = np.array([0.2, 0.6, 0.6, 0.05, 0.05, 0.2])
-    ABS_POSE_LIMIT_LOW = np.array([-0.2, 0.4, -0.006, -0.05, -0.05, -0.2])
-    ABS_POSE_RANGE_LIMITS = np.array([0.2, 0.9])
+    ABS_POSE_LIMIT_HIGH = np.array([0.2, 0.7, 0.8, 0.1, 0.1, 0.2])
+    ABS_POSE_LIMIT_LOW = np.array([-0.2, 0.4, 0.1, -0.1, -0.1, -0.2])
+    ABS_POSE_RANGE_LIMITS = np.array([0.4, 1.0])
     ACTION_SCALE = np.array([0.02, 0.1, 1.], dtype=np.float32)
 
     ROBOT_IP = "192.168.1.66"  # for the vacuum pump
@@ -40,6 +39,7 @@ class UR5DualCameraConfigLeft(UR5DualCameraConfigRight):
     ZEROMQ_PUBLISHER_PORT: int = 5555
     ZEROMQ_SUBSCRIBER_PORT: int = 5556
 
+    RESET_Q = np.array([[-1.6342, -2.0612,  2.1379, -3.2342, -1.5971,  1.5422]])
     REALSENSE_CAMERAS = {
         "wrist": "218622277164"
     }

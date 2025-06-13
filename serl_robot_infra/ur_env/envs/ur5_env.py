@@ -340,7 +340,7 @@ class UR5Env(gym.Env):
         gripper_action = action[6] * self.action_scale[2]
 
         safe_pos = self.clip_safety_box(next_pos)
-        self._send_pos_command(safe_pos)
+        self.send_pos_command(safe_pos)
         self._send_gripper_command(gripper_action)
         # print(f"sent pose: {safe_pos}  with action {action}    actual pose: {self.curr_pos}")
 
@@ -367,7 +367,7 @@ class UR5Env(gym.Env):
     def reached_goal_state(self, obs) -> bool:
         return False  # overwrite for each task
 
-    def go_to_rest(self):
+    def go_to_rest(self, deactiveate_gripper: bool = True):
         """
         The concrete steps to perform reset should be
         implemented each subclass for the specific task.
@@ -384,12 +384,12 @@ class UR5Env(gym.Env):
         else:
             raise ValueError(f"invalid resetQ dimension: {self.resetQ.shape}")
 
-        self._send_reset_command(reset_Q)
+        self.send_reset_command(reset_Q)
 
         while not self.controller.is_reset():
             time.sleep(0.1)  # wait for the reset operation
 
-        self._update_currpos()
+        self.update_currpos()
         reset_pose = np.asarray(self.controller.get_state()["pos"])
 
         if self.random_reset:  # randomize reset position in xy plane
@@ -420,12 +420,12 @@ class UR5Env(gym.Env):
         if self.gripper_state[0] > 0.01:
             reset_Q = self.curr_Q.copy()
             reset_Q[:4] = [0., -np.pi / 2., np.pi / 2., -np.pi / 2.]
-            self._send_reset_command(reset_Q)
+            self.send_reset_command(reset_Q)
             while not self.controller.is_reset():
                 time.sleep(0.1)  # wait for the reset operation
 
             reset_Q[:4] = [np.pi / 2, -np.pi / 2., np.pi / 2., -np.pi / 2.]
-            self._send_reset_command(reset_Q)
+            self.send_reset_command(reset_Q)
             while not self.controller.is_reset():
                 time.sleep(0.1)  # wait for the reset operation
 
@@ -435,7 +435,7 @@ class UR5Env(gym.Env):
 
         # go back on top
         reset_Q = [0., -np.pi / 2., np.pi / 2., -np.pi / 2., -np.pi / 2., 0.]
-        self._send_reset_command(reset_Q)
+        self.send_reset_command(reset_Q)
         while not self.controller.is_reset():
             time.sleep(0.1)  # wait for the reset operation
         time.sleep(0.5)
@@ -473,7 +473,7 @@ class UR5Env(gym.Env):
         while not self.controller.is_reset():
             time.sleep(0.1)  # wait for the reset operation
 
-        self._update_currpos()
+        self.update_currpos()
         self.curr_reset_pose[:] = self.curr_pos
 
     def reset(self, **kwargs):
@@ -629,20 +629,20 @@ class UR5Env(gym.Env):
         except Exception as e:
             print(f"Failed to close cameras: {e}")
 
-    def _send_pos_command(self, target_pose: np.ndarray):
+    def send_pos_command(self, target_pose: np.ndarray):
         """Internal function to send force command to the robot."""
         self.controller.set_target_pose(target_pose=target_pose)
 
     def _send_gripper_command(self, gripper_pos: np.ndarray):
         self.controller.set_gripper_pos(gripper_pos)
 
-    def _send_reset_command(self, reset_Q: np.ndarray):
+    def send_reset_command(self, reset_Q: np.ndarray):
         self.controller.set_reset_angles(reset_Q)
 
     def _send_taskspace_command(self, target_pose):
         self.controller.set_target_pose(target_pose)
 
-    def _update_currpos(self):
+    def update_currpos(self):
         """
         Internal function to get the latest state of the robot and its gripper.
         """
@@ -666,7 +666,7 @@ class UR5Env(gym.Env):
         if self.camera_mode is not None:
             images = self.get_image()
 
-        self._update_currpos()
+        self.update_currpos()
         state_observation = {
             "tcp_pose": self.curr_pos,
             "tcp_vel": self.curr_vel,
