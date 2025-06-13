@@ -15,6 +15,7 @@ class ControllerClientWithGripper(threading.Thread):
         super(ControllerClientWithGripper, self).__init__(*args, **kwargs)
         self._stop = threading.Event()
         self._reset = threading.Event()
+        self._release_gripper = threading.Event()
         self._is_ready = threading.Event()
         self._is_truncated = threading.Event()
         self.lock = threading.Lock()
@@ -31,6 +32,7 @@ class ControllerClientWithGripper(threading.Thread):
 
         self.controller = None
         self.gripper = None
+        self._release_gripper.set()
 
     def start(self):
         super().start()
@@ -72,6 +74,12 @@ class ControllerClientWithGripper(threading.Thread):
         else:
             self._is_truncated.clear()
 
+    def auto_release_gripper(self, yes=True):
+        if yes:
+            self._release_gripper.set()
+        else:
+            self._release_gripper.clear()
+
     def is_truncated(self):
         return self._is_truncated.is_set()
 
@@ -109,7 +117,7 @@ class ControllerClientWithGripper(threading.Thread):
 
     async def _go_to_reset_pose(self):
         # first disable vaccum gripper
-        if self.gripper:
+        if self.gripper and self._release_gripper.is_set():      # TODO how to handle this
             await self.send_gripper_command(force_release=True)
             time.sleep(0.01)
         self.controller.send_reset_joint_angles(self.reset_angles)
