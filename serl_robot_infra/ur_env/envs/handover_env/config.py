@@ -15,8 +15,8 @@ class UR5DualCameraConfigRight(DefaultEnvConfig):
     ROBOT_IP = "192.168.1.66"  # for the vacuum pump
     CONTROLLER_HZ: int = 100
     GRIPPER_TIMEOUT = 2000  # in milliseconds
-    ZEROMQ_PUBLISHER_PORT: int = 5557
-    ZEROMQ_SUBSCRIBER_PORT: int = 5558
+    ZEROMQ_PUBLISHER_PORT: int = 5558
+    ZEROMQ_SUBSCRIBER_PORT: int = 5559
 
     REALSENSE_CAMERAS = {
         "wrist": "218622279756",

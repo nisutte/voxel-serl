@@ -31,6 +31,7 @@ class SimpleBehaviorTree:
         self.env.send_pos_command(pose)
 
     def pickup(self) -> bool:
+        self.env.update_currpos()
         if self.env.gripper_state[1] > 0.5:
             self.pickup_done.set()
             return True
@@ -65,6 +66,8 @@ class UR5HandoverEnv(DualUR5Env):
     def reset(self, **kwargs):
         BTleft, BTright = SimpleBehaviorTree(self.env_left), SimpleBehaviorTree(self.env_right)
 
+        # TODO if box is handed over, switch envs and continue
+
         def reset_env_left():
             global ob_left
             BTleft.retreat()
@@ -78,7 +81,7 @@ class UR5HandoverEnv(DualUR5Env):
             time.sleep(0.5)
             while not BTright.pickup():
                 time.sleep(0.5)
-            self.env_right.controller.auto_release_gripper(True)
+            self.env_right.controller.auto_release_gripper(False)
             ob_right, _ = self.env_right.reset(**kwargs)
             self.env_right.controller.auto_release_gripper(True)
 
