@@ -201,12 +201,12 @@ class ControllerClient:
 
     def send_target_pose(self, pose: np.ndarray):
         assert pose.shape == (7,)
-        cmd = {"target_pose": pose.astype(float).tolist()}
+        cmd = {"target_ee_pose": pose.astype(float).tolist()}
         self.publisher.send_json(cmd)
 
     def send_reset_joint_angles(self, joint_angles: np.ndarray):
         assert joint_angles.shape == (6, )
-        cmd = {"reset_joint_angles": joint_angles.astype(float).tolist()}
+        cmd = {"target_q": joint_angles.astype(float).tolist()}
         self.publisher.send_json(cmd)
 
     def get_state(self):
