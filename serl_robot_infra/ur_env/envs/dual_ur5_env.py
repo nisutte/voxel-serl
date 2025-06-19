@@ -4,7 +4,6 @@ import threading
 from typing import Dict, Tuple
 from pprint import pprint
 
-
 from ur_env.envs.ur5_env import ImageDisplayer, PointCloudDisplayer, UR5Env
 from ur_env.utils.threaded_collision_detection import ThreadedCollisionDetector
 from ur_env.utils.transformations import T_to_pose, pose_to_T, vel_difference, apply_rotation
@@ -18,9 +17,9 @@ class CombinedQueue:
     def get(self):
         retval = {}
         for key, value in self.queue_left.get().items():
-            retval[key +"_left"] = value
+            retval[key + "_left"] = value
         for key, value in self.queue_right.get().items():
-            retval[key +"_right"] = value
+            retval[key + "_right"] = value
         return retval
 
 
@@ -87,7 +86,8 @@ class DualUR5Env(gym.Env):
         T_base2right = np.load(env_right.config.CALIBRATION_PATH)
         self.T_left2right = np.linalg.inv(T_base2left) @ T_base2right
         self.T_right2left = np.linalg.inv(self.T_left2right)
-        self.collision_detector = ThreadedCollisionDetector(np.eye(4), self.T_left2right, headless=False, distance_margin=0.04)
+        self.collision_detector = ThreadedCollisionDetector(np.eye(4), self.T_left2right, headless=False,
+                                                            distance_margin=0.04)
         self.collision_detector.start()
 
         if self.camera_mode is not None:
@@ -101,11 +101,11 @@ class DualUR5Env(gym.Env):
     def compute_reward(self, obs, action) -> float:
         raise NotImplementedError  # overwrite for each task
 
-    def reached_goal_state(self, obs) -> bool:
+    def reached_goal_state(self, obs, **kwargs) -> bool:
         raise NotImplementedError  # overwrite for each task
 
     def _is_truncated(self, obs) -> bool:
-        raise NotImplementedError    # overwrite for each task
+        raise NotImplementedError  # overwrite for each task
 
     def get_cost_infos(self, done):
         if not done:
@@ -140,7 +140,8 @@ class DualUR5Env(gym.Env):
         obs = self.combine_obs(ob_left, ob_right)
 
         truncated = truncated_left or truncated_right or self._is_truncated(obs)
-        done = self.env_left.curr_path_length >= self.env_left.max_episode_length or truncated or self.reached_goal_state(obs)
+        done = (self.env_left.curr_path_length >= self.env_left.max_episode_length or truncated or
+                self.reached_goal_state(obs))
         reward = self.compute_reward(obs, action)
 
         # visualize pointcloud (has to be in the main thread)
@@ -174,7 +175,8 @@ class DualUR5Env(gym.Env):
         right_state = {f"right/{key}": ob_right["state"][key] for key in ob_right["state"].keys()}
 
         # T_l2r = T_eeLeft2baseLeft @ T_baseLeft2baseRight @ T_baseRight2eeRight
-        T_l2r = np.linalg.inv(pose_to_T(ob_left["state"]["tcp_pose"])) @ self.T_left2right @ pose_to_T(ob_left["state"]["tcp_pose"])
+        T_l2r = np.linalg.inv(pose_to_T(ob_left["state"]["tcp_pose"])) @ self.T_left2right @ pose_to_T(
+            ob_left["state"]["tcp_pose"])
 
         right_vel_in_left = apply_rotation(ob_right["state"]["tcp_vel"], self.T_right2left, quat=False)
         left_vel_in_right = apply_rotation(ob_left["state"]["tcp_vel"], self.T_left2right, quat=False)

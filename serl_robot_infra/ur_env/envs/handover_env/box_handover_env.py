@@ -1,6 +1,7 @@
 import threading
 import numpy as np
 import time
+
 from ur_env.envs.dual_ur5_env import DualUR5Env
 
 
@@ -58,30 +59,84 @@ class SimpleBehaviorTree:
         return False
 
 
+def key_switch(obs):
+    switch = {"l2r": "r2l", "r2l": "l2r", "left": "right", "right": "left"}
+    new_obs = {}
+    for key, value in obs.items():
+        if isinstance(value, dict):
+            new_obs[key] = key_switch(value)
+            continue
+        changed = False
+        for k, v in switch.items():
+            if k in key and not changed:
+                key = key.replace(k, v)
+                changed = True
+        new_obs[key] = value
+    return new_obs
+
+
 class UR5HandoverEnv(DualUR5Env):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        """
+        The goal of the env is always to give the parcel from right to left.
+        Even if the env is inverted, the obs are from right to left.
+        """
         self.goal_state_increment: int = 0
+        self.inverted = False
+
+    def combine_obs(self, ob_left, ob_right):
+        obs = super().combine_obs(ob_left, ob_right)
+        if self.inverted:
+            obs = key_switch(obs)
+        return obs
+
+    def step(self, action: np.ndarray) -> tuple:
+        action = np.concatenate((action[7:], action[:7]))
+        obs, reward, done, truncated, info = super().step(action)
+        return obs, reward, done, truncated, info
 
     def reset(self, **kwargs):
         BTleft, BTright = SimpleBehaviorTree(self.env_left), SimpleBehaviorTree(self.env_right)
+        self.env_left.update_currpos()
+        self.env_right.update_currpos()
 
-        # TODO if box is handed over, switch envs and continue
+        already_picked_up = False
+        if self.env_left.gripper_state[1] > 0.5 and self.env_right.gripper_state[1] < 0.5:
+            # left gripper gripping, right gripper not gripping
+            print("Env is inverted!")
+            self.inverted = True
+            already_picked_up = True
+        elif self.env_right.gripper_state[1] > 0.5 and self.env_left.gripper_state[1] < 0.5:
+            # right gripper gripping, left gripper not gripping
+            self.inverted = False
+            already_picked_up = True
+        else:
+            # both grippers not gripping or both gripping (also wrong)
+            self.env_left._send_gripper_command(np.array(0))
+            self.env_right._send_gripper_command(np.array(0))
+            self.inverted = False
 
         def reset_env_left():
             global ob_left
             BTleft.retreat()
-            while not BTright.pickup_done.is_set():
-                time.sleep(0.1)
+            if not already_picked_up:
+                while not BTright.pickup_done.is_set():
+                    time.sleep(0.1)
+
+            self.env_left.controller.auto_release_gripper(not self.inverted)
             ob_left, _ = self.env_left.reset(**kwargs)
+            self.env_left.controller.auto_release_gripper(True)
 
         def reset_env_right():
             global ob_right
             BTright.retreat()
             time.sleep(0.5)
-            while not BTright.pickup():
-                time.sleep(0.5)
-            self.env_right.controller.auto_release_gripper(False)
+            if not already_picked_up:
+                while not BTright.pickup():
+                    time.sleep(0.5)
+
+            self.env_right.controller.auto_release_gripper(self.inverted)
             ob_right, _ = self.env_right.reset(**kwargs)
             self.env_right.controller.auto_release_gripper(True)
 
@@ -143,7 +198,7 @@ class UR5HandoverEnv(DualUR5Env):
         for key, info in cost_info.items():
             self.cost_infos[key] = info + (0. if key not in self.cost_infos else self.cost_infos[key])
 
-        if self.reached_goal_state(obs):
+        if self.reached_goal_state(obs, increment=False):
             self.last_action[:] = 0.
             return 100. - action_cost - action_diff_cost - orientation_cost - position_cost + retreat_reward
         else:
@@ -151,17 +206,17 @@ class UR5HandoverEnv(DualUR5Env):
                 - orientation_cost - position_cost + retreat_reward
 
     def dropped_parcel(self, obs) -> bool:
-        return False
-        # TODO activate if it is not annoying anymore
         state = obs["state"]
         # left gripper not gripping, right gripper not gripping
         return state['left/gripper_state'][1] < 0.5 and state["right/gripper_state"][1] < 0.5
 
-    def reached_goal_state(self, obs) -> bool:
+    def reached_goal_state(self, obs, **kwargs) -> bool:
         state = obs["state"]
         # left gripper gripping, right gripper not gripping
         goal_state = state['left/gripper_state'][1] > 0.5 and state["right/gripper_state"][1] < 1.
-        self.goal_state_increment = self.goal_state_increment + 1 if goal_state else 0
+
+        if not "increment" in kwargs or kwargs["increment"] == True:
+            self.goal_state_increment = self.goal_state_increment + 1 if goal_state else 0
         return self.goal_state_increment > 4
 
     def _is_truncated(self, obs):
