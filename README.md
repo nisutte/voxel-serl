@@ -22,6 +22,8 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 - [ ] ReplayBuffer -> make successfull picks more likely to be picked
 - [ ] do some demos and first training runs
 - [ ] examine ensemble sizes and subsampling
+- [ ] make position augmentation for pose data (also rotation)
+- [ ] enhance voxel grid augmentation (tough since it is 3dconv)
 
 
 ## Contributions

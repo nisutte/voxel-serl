@@ -78,8 +78,7 @@ class UR5HandoverEnv(DualUR5Env):
     def step(self, action: np.ndarray) -> tuple:
         if self.inverted:
             action = np.concatenate((action[7:], action[:7]))
-        obs, reward, done, truncated, info = super().step(action)
-        return obs, reward, done, truncated, info
+        return super().step(action)
 
     def reset(self, **kwargs):
         BTleft, BTright = SimpleBehaviorTree(self.env_left), SimpleBehaviorTree(self.env_right)
@@ -211,4 +210,6 @@ class UR5HandoverEnv(DualUR5Env):
         return self.dropped_parcel(obs) or collision
 
     def close(self):
+        self.env_left._send_gripper_command(np.array(-1))
+        self.env_right._send_gripper_command(np.array(-1))
         super().close()

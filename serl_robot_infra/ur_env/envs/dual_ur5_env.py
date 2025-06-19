@@ -199,3 +199,9 @@ class DualUR5Env(gym.Env):
             self.collision_detector.update_joint_state("robot_right", self.env_right.curr_Q)
 
         return ob
+
+    def close(self):
+        self.env_left.close()
+        self.env_right.close()
+        super().close()
+
