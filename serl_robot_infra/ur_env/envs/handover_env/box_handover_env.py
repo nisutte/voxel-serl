@@ -59,22 +59,6 @@ class SimpleBehaviorTree:
         return False
 
 
-def key_switch(obs):
-    switch = {"l2r": "r2l", "r2l": "l2r", "left": "right", "right": "left"}
-    new_obs = {}
-    for key, value in obs.items():
-        if isinstance(value, dict):
-            new_obs[key] = key_switch(value)
-            continue
-        changed = False
-        for k, v in switch.items():
-            if k in key and not changed:
-                key = key.replace(k, v)
-                changed = True
-        new_obs[key] = value
-    return new_obs
-
-
 class UR5HandoverEnv(DualUR5Env):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -86,13 +70,14 @@ class UR5HandoverEnv(DualUR5Env):
         self.inverted = False
 
     def combine_obs(self, ob_left, ob_right):
-        obs = super().combine_obs(ob_left, ob_right)
         if self.inverted:
-            obs = key_switch(obs)
-        return obs
+            return super().combine_obs(ob_right, ob_left)
+        else:
+            return super().combine_obs(ob_left, ob_right)
 
     def step(self, action: np.ndarray) -> tuple:
-        action = np.concatenate((action[7:], action[:7]))
+        if self.inverted:
+            action = np.concatenate((action[7:], action[:7]))
         obs, reward, done, truncated, info = super().step(action)
         return obs, reward, done, truncated, info
 
