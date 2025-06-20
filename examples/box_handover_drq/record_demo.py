@@ -100,14 +100,15 @@ if __name__ == "__main__":
             if exit_program.is_set():
                 raise KeyboardInterrupt  # stop program, but clean up before
 
-            action = np.array([0., 0., 0., 0., 0., 0., 0.])     # for testing
+            action = np.array([0., 0., 0., 0., 0., 0., 0.])
             next_obs, rew, done, truncated, info = env.step(np.concatenate((action, action)))
-            actions = info["intervene_action"]
+            if "intervene_action" in info:
+                action = info["intervene_action"]
 
             transition = copy.deepcopy(
                 dict(
                     observations=obs,
-                    actions=actions,
+                    actions=action,
                     next_observations=next_obs,
                     rewards=rew,
                     masks=1.0 - done,
