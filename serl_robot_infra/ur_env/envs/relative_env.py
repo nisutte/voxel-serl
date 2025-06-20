@@ -188,6 +188,8 @@ class DualRelativeFrame(gym.Wrapper):
             obs["state"][f"{both}tcp_vel"][3:6] = rotvec_frame_transform(obs["state"][f"{both}tcp_vel"][3:6], rot_mat)
             obs["state"][f"{both}tcp_force"] = rot_mat.transpose() @ obs["state"][f"{both}tcp_force"]
             obs["state"][f"{both}tcp_torque"] = rotvec_frame_transform(obs["state"][f"{both}tcp_torque"], rot_mat)
+            obs["state"][f"{both}action"][:3] = rot_mat.transpose() @ obs["state"][f"{both}action"][:3]
+            obs["state"][f"{both}action"][3:6] = rotvec_frame_transform(obs["state"][f"{both}action"][3:6], rot_mat)
 
         if self.include_relative_pose:
             left_T_b_o = construct_homogeneous_matrix(obs["state"]["left/tcp_pose"])
