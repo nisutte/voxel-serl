@@ -8,7 +8,7 @@ from einops import rearrange, repeat
 
 
 def create_state_mask(mask_str: str) -> jnp.ndarray:
-    all = jnp.ones((27,), dtype=jnp.bool)
+    all = jnp.ones((28,), dtype=jnp.bool)
     none = jnp.zeros_like(all)
     no_action = all.at[:7].set(False)
     gripper = none.at[0+7:2+7].set(True)
@@ -27,6 +27,9 @@ def create_state_mask(mask_str: str) -> jnp.ndarray:
     assert mask_str in masks
     return masks[mask_str]
 
+def create_dual_state_mask(mask_str: str) -> jnp.ndarray:
+    mask = create_state_mask(mask_str)
+    return jnp.concatenate((mask, mask), axis=0)
 
 class EncodingWrapper(nn.Module):
     """

@@ -10,7 +10,7 @@ from flax.core import frozen_dict
 
 from serl_launcher.agents.continuous.sac import SACAgent
 from serl_launcher.common.common import JaxRLTrainState, ModuleDict, nonpytree_field
-from serl_launcher.common.encoding import EncodingWrapper, create_state_mask
+from serl_launcher.common.encoding import EncodingWrapper, create_state_mask, create_dual_state_mask
 from serl_launcher.common.optimizers import make_optimizer
 from serl_launcher.common.typing import Batch, Data, Params, PRNGKey
 from serl_launcher.networks.actor_critic_nets import Critic, Policy, ensemblize
@@ -274,7 +274,13 @@ class DrQAgent(SACAgent):
         else:
             raise NotImplementedError(f"Unknown encoder type: {encoder_type}")
 
-        state_mask_arr = create_state_mask(state_mask)
+        if actions.shape[-1] == 7:
+            state_mask_arr = create_state_mask(state_mask)
+        elif actions.shape[-1] == 14:
+            state_mask_arr = create_dual_state_mask(state_mask)
+        else:
+            raise NotImplementedError(f"Unknown actions shape: {actions.shape}")
+
         assert observations["state"].shape[1] % state_mask_arr.shape[0] == 0
         state_mask_arr = jnp.repeat(state_mask_arr, observations["state"].shape[1] // state_mask_arr.shape[0], axis=0)
         print(f"state_mask: {state_mask}  {state_mask_arr.astype(jnp.int32)}")
