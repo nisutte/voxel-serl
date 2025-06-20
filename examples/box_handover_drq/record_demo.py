@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     transitions = []
     success_count = 0
-    success_needed = 10
+    success_needed = 6
     total_count = 0
     pbar = tqdm(total=success_needed)
 
@@ -101,7 +101,9 @@ if __name__ == "__main__":
                 raise KeyboardInterrupt  # stop program, but clean up before
 
             action = np.array([0., 0., 0., 0., 0., 0., 0.])
-            next_obs, rew, done, truncated, info = env.step(np.concatenate((action, action)))
+            action = np.concatenate([action, action])
+            next_obs, rew, done, truncated, info = env.step(action)
+
             if "intervene_action" in info:
                 action = info["intervene_action"]
 

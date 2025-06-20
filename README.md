@@ -25,7 +25,7 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 - [x] actions in the obs are transformed to base frame, we do not want that (so action input is different from action obs)
 - [ ] do some demos and first training runs
 - [ ] make a data consistency checker for the replay buffer
-- [ ] ReplayBuffer -> make successfull picks more likely to be picked
+- [ ] ReplayBuffer -> make successful picks more likely to be picked
 - [ ] examine ensemble sizes and subsampling
 - [ ] make position augmentation for pose data (also rotation)
 - [ ] enhance voxel grid augmentation (tough since it is 3dconv)

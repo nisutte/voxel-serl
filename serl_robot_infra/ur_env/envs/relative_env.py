@@ -48,7 +48,7 @@ class RelativeFrame(gym.Wrapper):
 
         # this is to convert the spacemouse intervention action
         if "intervene_action" in info:
-            info["intervene_action"] = self.transform_action_inv(info["intervene_action"])
+            info["intervene_action"] = info["intervene_action"]
 
         # Update rotation matrix
         self.rotation_matrix = construct_rotation_matrix(obs["state"]["tcp_pose"])
