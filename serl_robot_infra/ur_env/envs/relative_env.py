@@ -154,7 +154,7 @@ class DualRelativeFrame(gym.Wrapper):
 
         # this is to convert the spacemouse intervention action
         if "intervene_action" in info:
-            info["intervene_action"] = self.transform_action_inv(info["intervene_action"])
+            info["intervene_action"] = info["intervene_action"]
 
         # Transform observation to spatial frame
         transformed_obs = self.transform_observation(obs)
@@ -183,11 +183,11 @@ class DualRelativeFrame(gym.Wrapper):
         Transform observations from spatial(base) frame into body(end-effector) frame
         using the rotation and homogeneous matrix
         """
-        for both in ["left/", "right/"]:
-            obs["state"][f"{both}tcp_vel"][:3] = self.rot_mat_left.transpose() @ obs["state"][f"{both}tcp_vel"][:3]
-            obs["state"][f"{both}tcp_vel"][3:6] = rotvec_frame_transform(obs["state"][f"{both}tcp_vel"][3:6], self.rot_mat_left.transpose())
-            obs["state"][f"{both}tcp_force"] = self.rot_mat_left.transpose() @ obs["state"][f"{both}tcp_force"]
-            obs["state"][f"{both}tcp_torque"] = rotvec_frame_transform(obs["state"][f"{both}tcp_torque"], self.rot_mat_left.transpose())
+        for both, rot_mat in zip(("left/", "right/"), (self.rot_mat_left, self.rot_mat_right)):
+            obs["state"][f"{both}tcp_vel"][:3] = rot_mat.transpose() @ obs["state"][f"{both}tcp_vel"][:3]
+            obs["state"][f"{both}tcp_vel"][3:6] = rotvec_frame_transform(obs["state"][f"{both}tcp_vel"][3:6], rot_mat)
+            obs["state"][f"{both}tcp_force"] = rot_mat.transpose() @ obs["state"][f"{both}tcp_force"]
+            obs["state"][f"{both}tcp_torque"] = rotvec_frame_transform(obs["state"][f"{both}tcp_torque"], rot_mat)
 
         if self.include_relative_pose:
             left_T_b_o = construct_homogeneous_matrix(obs["state"]["left/tcp_pose"])
@@ -213,18 +213,6 @@ class DualRelativeFrame(gym.Wrapper):
         """
         action = np.array(action)  # in case action is a jax read-only array
         action[:3] = self.rot_mat_left @ action[:3]
-        action[3:6] = rotvec_frame_transform(action[3:6], self.rot_mat_left)
-        action[7:10] = self.rot_mat_right @ action[7:10]
-        action[10:13] = rotvec_frame_transform(action[10:13], self.rot_mat_right)
-        return action
-
-    def transform_action_inv(self, action: np.ndarray):
-        """
-        Transform action from spatial(base) frame into body(end-effector) frame
-        using the adjoint matrix.
-        """
-        action = np.array(action)
-        action[:3] = self.rot_mat_left @ action[:3]
         action[3:6] = rotvec_frame_transform(action[3:6], self.rot_mat_left.transpose())
         action[7:10] = self.rot_mat_right @ action[7:10]
         action[10:13] = rotvec_frame_transform(action[10:13], self.rot_mat_right.transpose())
@@ -241,7 +229,7 @@ class BaseFrameRotation(gym.Wrapper):
         obs, reward, done, truncated, info = self.env.step(transformed_action)
 
         if "intervene_action" in info:
-            info["intervene_action"] = self.transform_action_inv(info["intervene_action"])
+            info["intervene_action"] = info["intervene_action"]
 
         transformed_obs = self.base_transform_observation(obs)
         return transformed_obs, reward, done, truncated, info

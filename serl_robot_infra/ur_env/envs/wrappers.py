@@ -90,9 +90,10 @@ class SpacemouseIntervention(gym.ActionWrapper):
 
     def step(self, action):
         new_action, replaced = self.action(action)
-        # print(f"new action: {new_action}")
         obs, rew, done, truncated, info = self.env.step(new_action)
-        info["intervene_action"] = new_action
+
+        if replaced:
+            info["intervene_action"] = new_action
         info["left"] = self.left.any()
         info["right"] = self.right.any()
         return obs, rew, done, truncated, info
@@ -116,9 +117,7 @@ class DualSpaceMouseIntervention(gym.Wrapper):
         obs, rew, done, truncated, info = self.env.step(new_action)
 
         if replaced_left or replaced_right:
-            info["hil_action"] = new_action
-
-        info["intervene_action"] = new_action
+            info["intervene_action"] = new_action
 
         info["left"] = self.expert_left.left.any() or self.expert_right.left.any()  # Whether the left button is pressed.
         info["right"] = self.expert_left.right.any() or self.expert_right.right.any()  # Whether the right button is pressed.
