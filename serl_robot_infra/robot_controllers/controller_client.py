@@ -61,6 +61,9 @@ class ControllerClientWithGripper(threading.Thread):
             self.reset_angles[:] = reset_pose
         self._reset.set()
 
+    def reset_forces(self):
+        self.controller.send_force_reset_command()
+
     def get_height(self):
         return self.controller.get_state()["pos"][2]
 
@@ -203,6 +206,9 @@ class ControllerClient:
         assert pose.shape == (7,)
         cmd = {"target_ee_pose": pose.astype(float).tolist()}
         self.publisher.send_json(cmd)
+
+    def send_force_reset_command(self):
+        self.publisher.send_json({"reset_force_sensor": True})
 
     def send_reset_joint_angles(self, joint_angles: np.ndarray):
         assert joint_angles.shape == (6, )

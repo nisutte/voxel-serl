@@ -39,6 +39,7 @@ class SimpleBehaviorTree:
 
         pickup_Q = [-0.7027, -0.8565, 1.1014, -1.8162, -1.5657, -0.7058]
         self.env.send_reset_command(np.asarray(pickup_Q))
+        self.env.controller.reset_forces()
         i = 0
         for _ in range(200):
             self.env.update_currpos()
@@ -112,6 +113,9 @@ class UR5HandoverEnv(DualUR5Env):
             ob_left, _ = self.env_left.reset(**kwargs)
             self.env_left.controller.auto_release_gripper(True)
 
+            if not self.inverted:
+                self.env_left.controller.reset_forces()
+
         def reset_env_right():
             global ob_right
             BTright.retreat()
@@ -123,6 +127,9 @@ class UR5HandoverEnv(DualUR5Env):
             self.env_right.controller.auto_release_gripper(self.inverted)
             ob_right, _ = self.env_right.reset(**kwargs)
             self.env_right.controller.auto_release_gripper(True)
+
+            if self.inverted:
+                self.env_right.controller.reset_forces()
 
         thread_left = threading.Thread(target=reset_env_left, daemon=True)
         thread_right = threading.Thread(target=reset_env_right, daemon=True)
