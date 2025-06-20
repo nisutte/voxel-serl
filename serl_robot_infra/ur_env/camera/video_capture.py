@@ -10,7 +10,7 @@ class VideoCapture:
         self.name = name
         self.q = queue.Queue()
         self.cap = cap
-        self.t = threading.Thread(target=self._reader)
+        self.t = threading.Thread(target=self._reader, daemon=True)
         self.t.daemon = True
         self.enable = True
         self.t.start()
@@ -20,7 +20,7 @@ class VideoCapture:
     def _reader(self):
         while self.enable:
             time.sleep(0.01)
-            ret, frame = self.cap.read()
+            ret, frame, timestamp = self.cap.read()
             if not ret:
                 break
             if not self.q.empty():
@@ -28,9 +28,9 @@ class VideoCapture:
                     self.q.get_nowait()  # discard previous (unprocessed) frame
                 except queue.Empty:
                     pass
-            self.q.put(frame)
+            self.q.put((frame, timestamp))
 
-    def read(self):
+    def read(self) -> tuple:
         return self.q.get(timeout=5)
 
     def close(self):

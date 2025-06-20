@@ -9,7 +9,8 @@ class RSCapture:
         devices = rs.context().devices
         return [d.get_info(rs.camera_info.serial_number) for d in devices]
 
-    def __init__(self, name, serial_number, dim=(640, 480), fps=15, rgb=True, depth=False, pointcloud=False, rgb_pointcloud=False):
+    def __init__(self, name, serial_number, dim=(640, 480), fps=30, rgb=True, depth=False, pointcloud=False,
+                 rgb_pointcloud=False):
         self.name = name
         # print(self.get_device_serial_numbers())
         assert serial_number in self.get_device_serial_numbers()
@@ -57,11 +58,13 @@ class RSCapture:
 
     def read(self):
         t = time.time()
-        frames = self.pipe.wait_for_frames()
+        frames = self.pipe.wait_for_frames(timeout_ms=200)
         tdiff = time.time() - t
-        if tdiff > 0.5:
-            print(f"wait for frames took {tdiff:.3f} seconds")
+        if tdiff > 0.2:
+            print(f"wait for frames took {tdiff:.4f} seconds")
         image, depth, pointcloud, colors = [None] * 4
+
+        timestamp = frames.get_timestamp()  # Retrieve the timestamp of the frames
 
         if self.rgb or self.rgb_pc:
             aligned_frames = self.align.process(frames)
@@ -103,19 +106,18 @@ class RSCapture:
                     colors = image[y, x]
                     image = None # so it does not get returned
 
-
         if isinstance(image, np.ndarray) and isinstance(depth, np.ndarray):
-            return True, np.concatenate((image, depth), axis=-1)
+            return True, np.concatenate((image, depth), axis=-1), timestamp
         elif isinstance(image, np.ndarray):
-            return True, image
+            return True, image, timestamp
         elif isinstance(depth, np.ndarray):
-            return True, depth
+            return True, depth, timestamp
         elif isinstance(pointcloud, np.ndarray) and isinstance(colors, np.ndarray):
-            return True, np.concatenate((pointcloud, colors[:, ::-1]), axis=-1)      # (w, h, p+c)
+            return True, np.concatenate((pointcloud, colors[:, ::-1]), axis=-1), timestamp  # (w, h, p+c)
         elif isinstance(pointcloud, np.ndarray):
-            return True, pointcloud
+            return True, pointcloud, timestamp
         else:
-            return False, None
+            return False, None, 0
 
     def close(self):
         self.pipe.stop()

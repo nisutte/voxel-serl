@@ -72,6 +72,7 @@ class PointCloudDisplayer:
         self.ctr.convert_from_pinhole_camera_parameters(self.param, True)
 
         self.window.poll_events()
+        self.window.update_renderer()
         # self.window.run()
         # final_params = self.ctr.convert_to_pinhole_camera_parameters()
         # print("\n=== Final Camera Pinhole Parameters ===")
@@ -157,6 +158,10 @@ class UR5Env(gym.Env):
         self.curr_Qd = np.zeros((6,), dtype=np.float32)
         self.curr_force = np.zeros((3,), dtype=np.float32)
         self.curr_torque = np.zeros((3,), dtype=np.float32)
+        self.curr_timestamp_diff = np.zeros((1,), dtype=np.float32)
+
+        self.last_state_timestamp = None
+        self.curr_timestamp = None
 
         self.gripper_state = np.zeros((2,), dtype=np.float32)
         self.random_reset = config.RANDOM_RESET
@@ -241,7 +246,8 @@ class UR5Env(gym.Env):
                 "gripper_state": gym.spaces.Box(-1., 1., shape=(2,)),
                 "tcp_force": gym.spaces.Box(-np.inf, np.inf, shape=(3,)),
                 "tcp_torque": gym.spaces.Box(-np.inf, np.inf, shape=(3,)),
-                "action": gym.spaces.Box(-1., 1., shape=self.action_space.shape)
+                "action": gym.spaces.Box(-1., 1., shape=self.action_space.shape),
+                "time_diff": gym.spaces.Box(0., np.inf, shape=(1,)),
             }
         )
 
@@ -483,6 +489,7 @@ class UR5Env(gym.Env):
 
         shift = self.go_to_rest()
         self.curr_path_length = 0
+        self.last_state_timestamp = None
 
         obs = self._get_obs(np.zeros_like(self.last_action))
         return obs, {"reset_shift": shift}
@@ -516,7 +523,7 @@ class UR5Env(gym.Env):
             pointcloud = self.camera_mode in ["pointcloud"]
             rgb_pc = self.camera_mode in ["rgb_pointcloud"]
             cap = VideoCapture(
-                RSCapture(name=cam_name, serial_number=cam_serial, rgb=rgb, depth=depth, pointcloud=pointcloud, rgb_pointcloud=rgb_pc)
+                RSCapture(name=cam_name, serial_number=cam_serial, fps=30, rgb=rgb, depth=depth, pointcloud=pointcloud, rgb_pointcloud=rgb_pc)
             )
             self.cap[cam_name] = cap
 
@@ -524,15 +531,16 @@ class UR5Env(gym.Env):
         """Crop realsense images to be a square."""
         return image[:, 124:604, :]
 
-    def get_image(self) -> Dict[str, np.ndarray]:
+    def get_image(self) -> Tuple[Dict[str, np.ndarray], int]:
         """Get images from the realsense cameras."""
         images = {}
         display_images = {}
+        timestamp = 0
         if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
             self.pointcloud_fusion.clear()
         for key, cap in self.cap.items():
             try:
-                image = cap.read()
+                image, timestamp = cap.read()
                 if self.camera_mode in ["rgb", "both", "grey"]:
                     rgb = image[..., :3].astype(np.uint8)
                     cropped_rgb = self.crop_image(key, rgb)
@@ -586,7 +594,7 @@ class UR5Env(gym.Env):
         # )
         self.img_queue.put(display_images)
 
-        return images
+        return images, timestamp
 
     def calibrate_pointcloud_fusion(self, visualize=False, num_samples=20):
         self.reset()
@@ -655,6 +663,7 @@ class UR5Env(gym.Env):
         self.curr_Q[:] = state['Q']
         self.curr_Qd[:] = state['Qd']
         self.gripper_state[:] = state['gripper']
+        self.curr_timestamp = state['timestamp_ms']
 
     def _is_truncated(self):
         return self.controller.is_truncated()
@@ -662,18 +671,22 @@ class UR5Env(gym.Env):
     def _get_obs(self, action) -> dict:
         # get image before state observation, so they match better in time
 
+        self.update_currpos()
         images = None
         if self.camera_mode is not None:
-            images = self.get_image()
+            images, timestamp = self.get_image()
 
-        self.update_currpos()
+        self.curr_timestamp_diff[:] = (self.curr_timestamp - self.last_state_timestamp) * 1e-3 if self.last_state_timestamp else 0.
+        self.last_state_timestamp = self.curr_timestamp
+
         state_observation = {
             "tcp_pose": self.curr_pos,
             "tcp_vel": self.curr_vel,
             "gripper_state": self.gripper_state,
             "tcp_force": self.curr_force,
             "tcp_torque": self.curr_torque,
-            "action": action
+            "action": action,
+            "time_diff": self.curr_timestamp_diff
         }
 
         if images is not None:
