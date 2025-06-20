@@ -24,6 +24,10 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 - [ ] examine ensemble sizes and subsampling
 - [ ] make position augmentation for pose data (also rotation)
 - [ ] enhance voxel grid augmentation (tough since it is 3dconv)
+- [ ] make a data consistency checker for the replay buffer
+- [ ] add seconds passed since last action to the state
+- [x] improve camera frame polling (sometimes very slow) 
+  - camera lag time is ~60ms, quite high but i cannot do much about it
 
 
 ## Contributions
