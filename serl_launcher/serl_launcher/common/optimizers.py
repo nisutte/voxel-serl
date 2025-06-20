@@ -1,6 +1,7 @@
 from typing import Optional
 
 import optax
+import jax
 
 
 def make_optimizer(
@@ -10,6 +11,7 @@ def make_optimizer(
     weight_decay: Optional[float] = None,
     clip_grad_norm: Optional[float] = None,
     return_lr_schedule: bool = False,
+    freeze_backbone: bool = False,
 ) -> optax.GradientTransformation:
     if cosine_decay_steps is not None:
         learning_rate_schedule = optax.warmup_cosine_decay_schedule(
@@ -30,7 +32,7 @@ def make_optimizer(
 
     # Define optimizers
     @optax.inject_hyperparams
-    def optimizer(learning_rate: float, weight_decay: Optional[float]):
+    def optimizer(learning_rate: float, weight_decay: Optional[float], freeze_backbone: bool = False):
         optimizer_stages = []
 
         if clip_grad_norm is not None:
@@ -43,14 +45,24 @@ def make_optimizer(
         else:
             optimizer_stages.append(optax.adam(learning_rate=learning_rate))
 
-        return optax.chain(*optimizer_stages)
+        # ignore backbone params (frozen) --> not used yet
+        def mask_fn(params):
+            flat, tree_def = jax.tree_util.tree_flatten_with_path(params)
+            mask_flat = [
+                not any("frozen" in str(p) for p in path)
+                for path, _ in flat
+            ]
+            mask = jax.tree_util.tree_unflatten(tree_def, mask_flat)
+            return mask
+
+        return optax.masked(optax.chain(*optimizer_stages), mask_fn) if freeze_backbone else optax.chain(*optimizer_stages)
 
     if return_lr_schedule:
         return (
-            optimizer(learning_rate=learning_rate_schedule, weight_decay=weight_decay),
+            optimizer(learning_rate=learning_rate_schedule, weight_decay=weight_decay, freeze_backbone=freeze_backbone),
             learning_rate_schedule,
         )
     else:
         return optimizer(
-            learning_rate=learning_rate_schedule, weight_decay=weight_decay
+            learning_rate=learning_rate_schedule, weight_decay=weight_decay, freeze_backbone=freeze_backbone
         )
