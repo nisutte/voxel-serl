@@ -19,15 +19,15 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 - [x] collision detection between robots
 - [x] add difference parameters between the EE
 - [x] share the same voxnet backbone (less gpu mem, also can be frozen)
-- [ ] ReplayBuffer -> make successfull picks more likely to be picked
+- [x] add seconds passed since last action to the state
+- [x] improve camera frame polling (sometimes very slow) 
+  - camera lag time is ~60ms, quite high but i cannot do much about it
 - [ ] do some demos and first training runs
+- [ ] make a data consistency checker for the replay buffer
+- [ ] ReplayBuffer -> make successfull picks more likely to be picked
 - [ ] examine ensemble sizes and subsampling
 - [ ] make position augmentation for pose data (also rotation)
 - [ ] enhance voxel grid augmentation (tough since it is 3dconv)
-- [ ] make a data consistency checker for the replay buffer
-- [ ] add seconds passed since last action to the state
-- [x] improve camera frame polling (sometimes very slow) 
-  - camera lag time is ~60ms, quite high but i cannot do much about it
 
 
 ## Contributions
