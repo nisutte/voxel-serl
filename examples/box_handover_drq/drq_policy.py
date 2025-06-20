@@ -493,12 +493,13 @@ def main(_):
     env = UR5HandoverEnv(
         env_left=left_env,
         env_right=right_env,
+        fake_env=FLAGS.learner,
     )
 
     env = DualRelativeFrame(env)
     env = DualToMrpWrapper(env)
+    # env = ObservationStatisticsWrapper(env)
     env = DualScaleObservationWrapper(env)
-    env = ObservationStatisticsWrapper(env)
 
     # if FLAGS.actor:
     #     env = DualSpaceMouseIntervention(env)

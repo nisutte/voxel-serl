@@ -58,7 +58,7 @@ class RSCapture:
 
     def read(self):
         t = time.time()
-        frames = self.pipe.wait_for_frames(timeout_ms=200)
+        frames = self.pipe.wait_for_frames(timeout_ms=5000)
         tdiff = time.time() - t
         if tdiff > 0.2:
             print(f"wait for frames took {tdiff:.4f} seconds")

@@ -23,12 +23,15 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 - [x] improve camera frame polling (sometimes very slow) 
   - camera lag time is ~60ms, quite high but i cannot do much about it
 - [x] actions in the obs are transformed to base frame, we do not want that (so action input is different from action obs)
+- [ ] ADD MAX FORCE
 - [ ] do some demos and first training runs
 - [ ] make a data consistency checker for the replay buffer
 - [ ] ReplayBuffer -> make successful picks more likely to be picked
 - [ ] examine ensemble sizes and subsampling
 - [ ] make position augmentation for pose data (also rotation)
 - [ ] enhance voxel grid augmentation (tough since it is 3dconv)
+- [ ] fix observation statistics wrapper
+- [ ] add huge negative penalty for dropping box
 
 
 ## Contributions

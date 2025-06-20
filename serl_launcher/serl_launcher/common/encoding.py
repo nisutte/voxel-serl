@@ -28,8 +28,7 @@ def create_state_mask(mask_str: str) -> jnp.ndarray:
     return masks[mask_str]
 
 def create_dual_state_mask(mask_str: str) -> jnp.ndarray:
-    mask = create_state_mask(mask_str)
-    return jnp.concatenate((mask, mask), axis=0)
+    return jnp.ones((80,), dtype=jnp.bool)      # TODO make, but is complicated...
 
 class EncodingWrapper(nn.Module):
     """
