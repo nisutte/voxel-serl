@@ -50,7 +50,7 @@ class ThreadedCollisionDetector:
         self.collision_msg = ""
 
         self.collision_free = True
-        self.running = False
+        self.stop = threading.Event()
         self.thread = None
 
     def _add_robot(self, robot_name, transform):
@@ -98,7 +98,7 @@ class ThreadedCollisionDetector:
         """
         threaded collision detection loop
         """
-        while self.running:
+        while not self.stop.is_set():
             t_start = time.time()
             for robot, joint_state in self.robot_joint_states.items():
                 self.C.setJointState(joint_state, self.robot_joint_names[robot])
@@ -116,15 +116,13 @@ class ThreadedCollisionDetector:
             time.sleep(max(1. / self.frequency - (time.time() - t_start), 0.))
 
     def start(self):
-        if not self.running:
-            self.running = True
-            self.thread = threading.Thread(target=self._collision_detection_loop)
+        if not self.stop.is_set():
+            self.thread = threading.Thread(target=self._collision_detection_loop, daemon=True)
             self.thread.start()
 
     def stop(self):
-        if self.running:
-            self.running = False
-            self.thread.join()
+        self.stop.set()
+        self.thread.join()
 
     def is_collision_free(self):
         return self.collision_free

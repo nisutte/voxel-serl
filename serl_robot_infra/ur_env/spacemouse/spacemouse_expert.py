@@ -17,7 +17,7 @@ class SpaceMouseExpert:
         self.state_lock = threading.Lock()
         self.latest_data = {"action": np.zeros(6), "buttons": [0, 0]}
         # Start a thread to continuously read the SpaceMouse state
-        self.thread = threading.Thread(target=self._read_spacemouse)
+        self.thread = threading.Thread(target=self._read_spacemouse, daemon=True)
         self.thread.daemon = True
         self.thread.start()
 

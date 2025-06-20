@@ -19,7 +19,7 @@ class FakeSpaceMouseExpert:
         self.latest_data = {"action": np.zeros(6), "buttons": [0, 1]}
 
         # Start a thread to listen for keyboard input
-        self.thread = threading.Thread(target=self._listen_keyboard)
+        self.thread = threading.Thread(target=self._listen_keyboard, daemon=True)
         self.thread.daemon = True
         self.thread.start()
 

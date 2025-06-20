@@ -124,8 +124,8 @@ class UR5HandoverEnv(DualUR5Env):
             ob_right, _ = self.env_right.reset(**kwargs)
             self.env_right.controller.auto_release_gripper(True)
 
-        thread_left = threading.Thread(target=reset_env_left)
-        thread_right = threading.Thread(target=reset_env_right)
+        thread_left = threading.Thread(target=reset_env_left, daemon=True)
+        thread_right = threading.Thread(target=reset_env_right, daemon=True)
         thread_left.start()
         thread_right.start()
         thread_left.join()
