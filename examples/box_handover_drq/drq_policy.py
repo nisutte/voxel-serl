@@ -34,7 +34,7 @@ from agentlace.data.data_store import QueuedDataStore
 from serl_launcher.utils.launcher import (
     make_drq_agent,
     make_trainer_config,
-    make_wandb_logger,
+    make_wandb_logger, make_replay_buffer,
 )
 from serl_launcher.data.data_store import MemoryEfficientReplayBufferDataStore
 from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper, ScaleObservationWrapper
@@ -545,15 +545,15 @@ def main(_):
     agent.config["activate_batch_rotation"] = False  # obs batch rotation control
 
     def create_replay_buffer_and_wandb_logger():
-        replay_buffer = MemoryEfficientReplayBufferDataStore(
-            env.observation_space,
-            env.action_space,
-            capacity=FLAGS.replay_buffer_capacity,
+        replay_buffer = make_replay_buffer(
+            env,
+            FLAGS.replay_buffer_capacity,
+            rlds_logger_path=FLAGS.rlds_logger_path,
             image_keys=image_keys,
         )
         # set up wandb and logging
         wandb_logger = make_wandb_logger(
-            project="paper_experiments",
+            project="handover RL",
             description=FLAGS.exp_name,
             debug=FLAGS.debug,
         )
