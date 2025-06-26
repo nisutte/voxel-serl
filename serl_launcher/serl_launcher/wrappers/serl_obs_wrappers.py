@@ -18,6 +18,11 @@ class SERLObsWrapper(gym.ObservationWrapper):
                 **(self.env.observation_space["images"] if "images" in self.env.observation_space.spaces else {}),
             }
         )
+        i, infos = 0, {}
+        for key, val in self.env.observation_space["state"].items():
+            infos[key] = (i, i+val.shape[0])
+            i += val.shape[0]
+        print(infos)
 
     def observation(self, obs):
         obs = {
