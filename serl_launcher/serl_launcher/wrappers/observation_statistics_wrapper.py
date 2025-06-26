@@ -2,6 +2,9 @@ import numpy as np
 from collections import deque
 import gymnasium as gym
 
+from ur_env.envs.dual_ur5_env import DualUR5Env
+from ur_env.envs.ur5_env import UR5Env
+
 
 class ObservationStatisticsWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
     """
@@ -16,20 +19,17 @@ class ObservationStatisticsWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs)
         gym.Wrapper.__init__(self, env)
 
         self.buffer = {}
+        if isinstance(env.unwrapped, DualUR5Env):
+            max_episode_length = self.env_left.max_episode_length
+            self.curr_path_length = self.env_left.curr_path_length
+        elif isinstance(env.unwrapped, UR5Env):
+            max_episode_length = self.max_episode_length
+        else:
+            raise NotImplementedError(f"Observation statistics wrapper does not support {type(env)}")
 
         # make buffer
         for name, space in self.env.observation_space["state"].items():
-            self.buffer[name] = np.zeros(shape=(self.max_episode_length, space.shape[0]))
-
-        # may not be used
-        self.num_envs = getattr(env, "num_envs", 1)
-        self.episode_count = 0
-        self.episode_start_times: np.ndarray = None
-        self.episode_returns = None
-        self.episode_lengths = None
-        self.return_queue = deque(maxlen=deque_size)
-        self.length_queue = deque(maxlen=deque_size)
-        self.is_vector_env = getattr(env, "is_vector_env", False)
+            self.buffer[name] = np.zeros(shape=(max_episode_length, space.shape[0]))
 
     def step(self, action):
         """Steps through the environment, recording the episode statistics."""

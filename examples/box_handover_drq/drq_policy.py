@@ -498,7 +498,7 @@ def main(_):
 
     env = DualRelativeFrame(env)
     env = DualToMrpWrapper(env)
-    # env = ObservationStatisticsWrapper(env)
+    env = ObservationStatisticsWrapper(env)
     env = DualScaleObservationWrapper(env)
 
     # if FLAGS.actor:
