@@ -143,6 +143,7 @@ class DualUR5Env(gym.Env):
         done = (self.env_left.curr_path_length >= self.env_left.max_episode_length or truncated or
                 self.reached_goal_state(obs))
         reward = self.compute_reward(obs, action)
+        reward = reward if not truncated else reward - 100.     # cost if boxes dropped or collision
 
         # visualize pointcloud (has to be in the main thread)
         if self.camera_mode in ["pointcloud"]:

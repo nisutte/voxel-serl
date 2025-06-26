@@ -152,7 +152,7 @@ class UR5HandoverEnv(DualUR5Env):
 
         suction_reward = 0.3 * float(state["left/gripper_state"][1] > 0.5)
         suction_cost = 3. * float(state["left/gripper_state"][1] < -0.5)
-        dropping_penalty = 1 if self.dropped_parcel(obs) else 0
+        dropping_cost = 100 if self.dropped_parcel(obs) else 0
 
         cutoff_dist = 0.07
         pos_diff_left = state["left/tcp_pose"][:3] - self.env_left.curr_reset_pose[:3]
@@ -171,7 +171,9 @@ class UR5HandoverEnv(DualUR5Env):
         orientation_cost_right = max(orientation_cost_right - 0.005, 0.) * 25.
         orientation_cost = orientation_cost_left + orientation_cost_right
 
-        retreat_reward = 1. * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
+        max_force_penalty = self.calculate_force_penalty(obs, max_force=10)
+
+        retreat_reward = 10. * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
 
         cost_info = dict(
             step_cost=step_cost,
@@ -179,27 +181,40 @@ class UR5HandoverEnv(DualUR5Env):
             action_diff_cost=action_diff_cost,
             suction_reward=suction_reward,
             suction_cost=suction_cost,
-            dropping_penalty=dropping_penalty,
+            dropping_cost=dropping_cost,
             orientation_cost=orientation_cost,
             position_cost=position_cost,
+            max_force_penalty=max_force_penalty,
             retreat_reward=retreat_reward,
-            total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_penalty
-                         - orientation_cost - position_cost + retreat_reward)
+            total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_cost
+                         - orientation_cost - position_cost - max_force_penalty + retreat_reward)
         )
         for key, info in cost_info.items():
             self.cost_infos[key] = info + (0. if key not in self.cost_infos else self.cost_infos[key])
 
         if self.reached_goal_state(obs, increment=False):
             self.last_action[:] = 0.
-            return 100. - action_cost - action_diff_cost - orientation_cost - position_cost + retreat_reward
+            return 100. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty + retreat_reward
         else:
-            return 0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_penalty \
-                - orientation_cost - position_cost + retreat_reward
+            return 0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_cost \
+                - orientation_cost - position_cost - max_force_penalty + retreat_reward
 
     def dropped_parcel(self, obs) -> bool:
         state = obs["state"]
         # left gripper not gripping, right gripper not gripping
+        # TODO check if good or if pressure is better
         return state['left/gripper_state'][1] < 0.5 and state["right/gripper_state"][1] < 0.5
+
+    def calculate_force_penalty(self, obs, max_force=20.):
+        # if gripper is gripping, ignore gravity
+        state = obs["state"]
+        penalty = 0.
+        for both in ["left/", "right/"]:
+            force = state[both + "tcp_force"]
+            if state[both + "gripper_state"] > 0.5:
+                force[2] = 0. if force[2] < 0. else force[2]
+            penalty += np.linalg.norm(force)
+        return min(0., penalty - 2 * max_force) * 0.1
 
     def reached_goal_state(self, obs, **kwargs) -> bool:
         state = obs["state"]
