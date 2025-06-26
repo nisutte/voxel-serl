@@ -43,7 +43,7 @@ class SimpleBehaviorTree:
         i = 0
         for _ in range(200):
             self.env.update_currpos()
-            DOWN = np.asarray([0, 0, -0.005, 0, 0, 0, 0])
+            DOWN = np.asarray([0, 0, -0.01, 0, 0, 0, 0])
             if self.env.gripper_state[1] == 1:
                 DOWN = -DOWN
                 i += 1
@@ -53,10 +53,11 @@ class SimpleBehaviorTree:
 
             if self.env.curr_force[2] >= 5. and self.env.gripper_state[1] < 0.5:
                 self.env.send_gripper_command(np.array(1))
+                DOWN = -DOWN
 
             new_pose = self.env.curr_pos + DOWN
             self.env.send_pos_command(new_pose)
-            time.sleep(0.02)
+            time.sleep(0.05)
 
         return False
 
@@ -235,6 +236,7 @@ class UR5HandoverEnv(DualUR5Env):
         return self.dropped_parcel(obs) or collision or max_force
 
     def close(self):
-        self.env_left.send_gripper_command(np.array(-1))
-        self.env_right.send_gripper_command(np.array(-1))
+        if not self.fake_env:
+            self.env_left.send_gripper_command(np.array(-1))
+            self.env_right.send_gripper_command(np.array(-1))
         super().close()

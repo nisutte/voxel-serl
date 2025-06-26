@@ -13,7 +13,7 @@ python /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@
     --batch_size 64 \
     --checkpoint_period 1000 \
     --checkpoint_path /home/nico/real-world-rl/serl/examples/box_handover_drq/checkpoints \
-    --demo_path /home/nico/real-world-rl/serl/examples/box_handover_drq/box_picking_6_demos_jun26.pkl \
+    --demo_path /home/nico/real-world-rl/serl/examples/box_handover_drq/box_picking_5_demos_jun26.pkl \
     \
     --encoder_type voxnet-pretrained \
     --state_mask all \

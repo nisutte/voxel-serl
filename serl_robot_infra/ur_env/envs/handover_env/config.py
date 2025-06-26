@@ -7,8 +7,8 @@ class UR5DualCameraConfigRight(DefaultEnvConfig):
     RANDOM_RESET = False
     RANDOM_XY_RANGE = (0.00,)
     RANDOM_ROT_RANGE = (0.0,)
-    ABS_POSE_LIMIT_HIGH = np.array([0.2, 0.7, 0.8, 0.3, 0.3, 0.3])
-    ABS_POSE_LIMIT_LOW = np.array([-0.2, 0.4, 0.3, -0.3, -0.3, -0.3])
+    ABS_POSE_LIMIT_HIGH = np.array([0.2, 0.7, 0.8, 0.2, 0.2, 0.4])
+    ABS_POSE_LIMIT_LOW = np.array([-0.2, 0.4, 0.3, -0.2, -0.2, -0.4])
     ABS_POSE_RANGE_LIMITS = np.array([0.35, 0.8])
     ACTION_SCALE = np.array([0.02, 0.1, 1.], dtype=np.float32)
 

@@ -266,21 +266,22 @@ def make_replay_buffer(
     - image_keys: list of image keys, used only "memory_efficient_replay_buffer"
     - preload_rlds_path: path to preloaded RLDS trajectories
     """
-    print("shape of observation space and action space")
-    print(env.observation_space)
-    print(env.action_space)
+    # print("shape of observation space and action space")
+    # print(env.observation_space)
+    # print(env.action_space)
 
     # init logger for RLDS
     if rlds_logger_path:
         # from: https://github.com/rail-berkeley/oxe_envlogger
         from oxe_envlogger.rlds_logger import RLDSLogger
 
+        # only log states for now, pc is dying...
         rlds_logger = RLDSLogger(
-            observation_space=env.observation_space,
+            observation_space=env.observation_space["state"],
             action_space=env.action_space,
-            dataset_name="serl_rlds_dataset",
+            dataset_name="voxel_serl_rlds_dataset",
             directory=rlds_logger_path,
-            max_episodes_per_file=5,  # TODO: arbitrary number
+            max_episodes_per_file=10,  # TODO: arbitrary number
         )
     else:
         rlds_logger = None

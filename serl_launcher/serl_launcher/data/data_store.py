@@ -128,7 +128,7 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
 
                 self._logger(
                     action=data["actions"],
-                    obs=data["next_observations"],  # TODO: not obs, but next_obs
+                    obs=data["next_observations"]["state"],  # only state for now
                     reward=data["rewards"],
                     step_type=self.step_type,
                 )

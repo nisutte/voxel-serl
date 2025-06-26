@@ -548,6 +548,7 @@ def main(_):
         replay_buffer = make_replay_buffer(
             env,
             FLAGS.replay_buffer_capacity,
+            type="memory_efficient_replay_buffer",
             rlds_logger_path=FLAGS.log_rlds_path,
             image_keys=image_keys,
         )
