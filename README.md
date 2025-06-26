@@ -29,6 +29,7 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 - [ ] Do propper normalization (over rlds dataset)
 - [ ] make a data consistency checker for the replay buffer
 - [ ] fix observation statistics wrapper
+- [ ] Add pose estimation to automate the pickup
 - [ ] examine ensemble sizes and subsampling
 - [ ] make position augmentation for pose data (also rotation)
 - [ ] enhance voxel grid augmentation (tough since it is 3dconv)

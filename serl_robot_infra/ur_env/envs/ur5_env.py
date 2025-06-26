@@ -347,7 +347,7 @@ class UR5Env(gym.Env):
 
         safe_pos = self.clip_safety_box(next_pos)
         self.send_pos_command(safe_pos)
-        self._send_gripper_command(gripper_action)
+        self.send_gripper_command(gripper_action)
         # print(f"sent pose: {safe_pos}  with action {action}    actual pose: {self.curr_pos}")
 
         self.curr_path_length += 1
@@ -436,7 +436,7 @@ class UR5Env(gym.Env):
                 time.sleep(0.1)  # wait for the reset operation
 
             # release the box
-            self._send_gripper_command(np.array(-1))
+            self.send_gripper_command(np.array(-1))
             time.sleep(0.1)
 
         # go back on top
@@ -641,7 +641,7 @@ class UR5Env(gym.Env):
         """Internal function to send force command to the robot."""
         self.controller.set_target_pose(target_pose=target_pose)
 
-    def _send_gripper_command(self, gripper_pos: np.ndarray):
+    def send_gripper_command(self, gripper_pos: np.ndarray):
         self.controller.set_gripper_pos(gripper_pos)
 
     def send_reset_command(self, reset_Q: np.ndarray):

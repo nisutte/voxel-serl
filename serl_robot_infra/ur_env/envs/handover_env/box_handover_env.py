@@ -43,7 +43,7 @@ class SimpleBehaviorTree:
         i = 0
         for _ in range(200):
             self.env.update_currpos()
-            DOWN = np.asarray([0, 0, -0.01, 0, 0, 0, 0])
+            DOWN = np.asarray([0, 0, -0.005, 0, 0, 0, 0])
             if self.env.gripper_state[1] == 1:
                 DOWN = -DOWN
                 i += 1
@@ -51,12 +51,13 @@ class SimpleBehaviorTree:
                 self.pickup_done.set()
                 return True
 
+            if self.env.curr_force[2] >= 5. and self.env.gripper_state[1] < 0.5:
+                self.env.send_gripper_command(np.array(1))
+
             new_pose = self.env.curr_pos + DOWN
             self.env.send_pos_command(new_pose)
-            time.sleep(0.05)
+            time.sleep(0.02)
 
-            if self.env.curr_vel[2] >= 0. and self.env.gripper_state[1] == 0:
-                self.env._send_gripper_command(np.array(1))
         return False
 
 
@@ -98,8 +99,8 @@ class UR5HandoverEnv(DualUR5Env):
             already_picked_up = True
         else:
             # both grippers not gripping or both gripping (also wrong)
-            self.env_left._send_gripper_command(np.array(0))
-            self.env_right._send_gripper_command(np.array(0))
+            self.env_left.send_gripper_command(np.array(0))
+            self.env_right.send_gripper_command(np.array(0))
             self.inverted = False
 
         def reset_env_left():
@@ -146,8 +147,8 @@ class UR5HandoverEnv(DualUR5Env):
         state = obs["state"]
 
         step_cost = 0.1
-        action_cost = 0.1 * np.sum(np.power(action, 2))
-        action_diff_cost = 0.5 * np.sum(np.power(action - self.last_action, 2))
+        action_cost = 0.5 * np.sum(np.power(action, 2))
+        action_diff_cost = 1.0 * np.sum(np.power(action - self.last_action, 2))
         self.last_action = action
 
         suction_reward = 0.3 * float(state["left/gripper_state"][1] > 0.5)
@@ -172,7 +173,6 @@ class UR5HandoverEnv(DualUR5Env):
         orientation_cost = orientation_cost_left + orientation_cost_right
 
         max_force_penalty = self.calculate_force_penalty(obs, max_force=10)
-
         retreat_reward = 10. * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
 
         cost_info = dict(
@@ -211,7 +211,7 @@ class UR5HandoverEnv(DualUR5Env):
         penalty = 0.
         for both in ["left/", "right/"]:
             force = state[both + "tcp_force"]
-            if state[both + "gripper_state"] > 0.5:
+            if state[both + "gripper_state"][1] > 0.5:
                 force[2] = 0. if force[2] < 0. else force[2]
             penalty += np.linalg.norm(force)
         return min(0., penalty - 2 * max_force) * 0.1
@@ -229,9 +229,12 @@ class UR5HandoverEnv(DualUR5Env):
         collision = not self.collision_detector.is_collision_free()
         if collision:
             print(self.collision_detector.collision_msg)
-        return self.dropped_parcel(obs) or collision
+        max_force = np.linalg.norm(obs["state"]["left/tcp_force"]) > 100. or np.linalg.norm(obs["state"]["right/tcp_force"]) > 100.
+        if max_force:
+            print(f"max force detected! {obs['state']['left/tcp_force']} {obs['state']['right/tcp_force']}")
+        return self.dropped_parcel(obs) or collision or max_force
 
     def close(self):
-        self.env_left._send_gripper_command(np.array(-1))
-        self.env_right._send_gripper_command(np.array(-1))
+        self.env_left.send_gripper_command(np.array(-1))
+        self.env_right.send_gripper_command(np.array(-1))
         super().close()
