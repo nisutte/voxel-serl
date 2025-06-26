@@ -548,7 +548,7 @@ def main(_):
         replay_buffer = make_replay_buffer(
             env,
             FLAGS.replay_buffer_capacity,
-            rlds_logger_path=FLAGS.rlds_logger_path,
+            rlds_logger_path=FLAGS.log_rlds_path,
             image_keys=image_keys,
         )
         # set up wandb and logging
