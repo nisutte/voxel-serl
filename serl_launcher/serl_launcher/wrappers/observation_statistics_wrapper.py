@@ -49,7 +49,7 @@ class ObservationStatisticsWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs)
 
         dones = np.logical_or(terminations, truncations)
         num_dones = np.sum(dones)
-        if num_dones:
+        if num_dones and self.curr_path_length:
             calc_buffs = {}
             calc_buffs.update({
                 name + "_mean": np.mean(obs[:self.curr_path_length], axis=0) for name, obs in self.buffer.items()

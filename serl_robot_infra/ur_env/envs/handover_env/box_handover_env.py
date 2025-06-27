@@ -62,6 +62,36 @@ class SimpleBehaviorTree:
         return False
 
 
+def dropping_parcel(obs, action) -> bool:
+    state = obs["state"]
+    drop_left = state["left/gripper_state"][1] < 0.5 and action[7 + 6] < -0.5
+    drop_right = state["right/gripper_state"][1] < 0.5 and action[0 + 6] < -0.5
+    # could also be avoided, but lets try it this way (wrong action --> immediate cost)
+    if drop_left or drop_right:
+        print(f"parcel is dropping: {drop_left}, {drop_right}")
+    return drop_left or drop_right
+
+
+def dropped_parcel(obs) -> bool:
+    state = obs["state"]
+    dropped = state['left/gripper_state'][1] < 0.5 and state["right/gripper_state"][1] < 0.5
+    if dropped:
+        print(f"parcel dropped!")
+    return dropped
+
+
+def calculate_force_penalty(obs, max_force=20.):
+    # if gripper is gripping, ignore gravity
+    state = obs["state"]
+    penalty = 0.
+    for both in ["left/", "right/"]:
+        force = state[both + "tcp_force"]
+        if state[both + "gripper_state"][1] > 0.5:
+            force[2] = 0. if force[2] < 0. else force[2]
+        penalty += np.linalg.norm(force)
+    return max(0., penalty - 2 * max_force)
+
+
 class UR5HandoverEnv(DualUR5Env):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -148,15 +178,15 @@ class UR5HandoverEnv(DualUR5Env):
         state = obs["state"]
 
         step_cost = 0.1
-        action_cost = 0.5 * np.sum(np.power(action, 2))
-        action_diff_cost = 1.0 * np.sum(np.power(action - self.last_action, 2))
+        action_cost = 0.2 * np.sum(np.power(action, 2))
+        action_diff_cost = 0.5 * np.sum(np.power(action - self.last_action, 2))
         self.last_action = action
 
         suction_reward = 0.3 * float(state["left/gripper_state"][1] > 0.5)
         suction_cost = 3. * float(state["left/gripper_state"][1] < -0.5)
-        dropping_cost = 100 if self.dropped_parcel(obs) else 0
+        dropping_cost = 100 if dropping_parcel(obs, action) else 0
 
-        cutoff_dist = 0.07
+        cutoff_dist = np.array([0.1, 0.3, 0.1])     # lessen y direction (forward)
         pos_diff_left = state["left/tcp_pose"][:3] - self.env_left.curr_reset_pose[:3]
         pos_diff_right = state["right/tcp_pose"][:3] - self.env_right.curr_reset_pose[:3]
         position_cost_left = 10. * np.sum(
@@ -173,7 +203,7 @@ class UR5HandoverEnv(DualUR5Env):
         orientation_cost_right = max(orientation_cost_right - 0.005, 0.) * 25.
         orientation_cost = orientation_cost_left + orientation_cost_right
 
-        max_force_penalty = self.calculate_force_penalty(obs, max_force=10)
+        max_force_penalty = 0.01 * calculate_force_penalty(obs, max_force=10)
         retreat_reward = 10. * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
 
         cost_info = dict(
@@ -200,23 +230,6 @@ class UR5HandoverEnv(DualUR5Env):
             return 0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_cost \
                 - orientation_cost - position_cost - max_force_penalty + retreat_reward
 
-    def dropped_parcel(self, obs) -> bool:
-        state = obs["state"]
-        # left gripper not gripping, right gripper not gripping
-        # TODO check if good or if pressure is better
-        return state['left/gripper_state'][1] < 0.5 and state["right/gripper_state"][1] < 0.5
-
-    def calculate_force_penalty(self, obs, max_force=20.):
-        # if gripper is gripping, ignore gravity
-        state = obs["state"]
-        penalty = 0.
-        for both in ["left/", "right/"]:
-            force = state[both + "tcp_force"]
-            if state[both + "gripper_state"][1] > 0.5:
-                force[2] = 0. if force[2] < 0. else force[2]
-            penalty += np.linalg.norm(force)
-        return min(0., penalty - 2 * max_force) * 0.1
-
     def reached_goal_state(self, obs, **kwargs) -> bool:
         state = obs["state"]
         # left gripper gripping, right gripper not gripping
@@ -230,10 +243,8 @@ class UR5HandoverEnv(DualUR5Env):
         collision = not self.collision_detector.is_collision_free()
         if collision:
             print(self.collision_detector.collision_msg)
-        max_force = np.linalg.norm(obs["state"]["left/tcp_force"]) > 100. or np.linalg.norm(obs["state"]["right/tcp_force"]) > 100.
-        if max_force:
-            print(f"max force detected! {obs['state']['left/tcp_force']} {obs['state']['right/tcp_force']}")
-        return self.dropped_parcel(obs) or collision or max_force
+        dropped = dropped_parcel(obs)
+        return collision or dropped
 
     def close(self):
         if not self.fake_env:
