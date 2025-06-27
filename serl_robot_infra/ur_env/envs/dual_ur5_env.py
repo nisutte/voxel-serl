@@ -177,7 +177,7 @@ class DualUR5Env(gym.Env):
 
         # T_l2r = T_eeLeft2baseLeft @ T_baseLeft2baseRight @ T_baseRight2eeRight
         T_l2r = np.linalg.inv(pose_to_T(ob_left["state"]["tcp_pose"])) @ self.T_left2right @ pose_to_T(
-            ob_left["state"]["tcp_pose"])
+            ob_right["state"]["tcp_pose"])
 
         right_vel_in_left = apply_rotation(ob_right["state"]["tcp_vel"], self.T_right2left, quat=False)
         left_vel_in_right = apply_rotation(ob_left["state"]["tcp_vel"], self.T_left2right, quat=False)
