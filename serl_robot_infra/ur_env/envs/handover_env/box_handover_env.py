@@ -3,6 +3,7 @@ import numpy as np
 import time
 
 from ur_env.envs.dual_ur5_env import DualUR5Env
+from scipy.spatial.transform import Rotation as R
 
 
 class SimpleBehaviorTree:
@@ -184,9 +185,9 @@ class UR5HandoverEnv(DualUR5Env):
 
         suction_reward = 0.3 * float(state["left/gripper_state"][1] > 0.5)
         suction_cost = 3. * float(state["left/gripper_state"][1] < -0.5)
-        dropping_cost = 100 if dropping_parcel(obs, action) else 0
+        dropping_cost = 25 if dropping_parcel(obs, action) else 0
 
-        cutoff_dist = np.array([0.1, 0.3, 0.1])     # lessen y direction (forward)
+        cutoff_dist = np.array([0.1, 0.3, 0.1])  # lessen y direction (forward)
         pos_diff_left = state["left/tcp_pose"][:3] - self.env_left.curr_reset_pose[:3]
         pos_diff_right = state["right/tcp_pose"][:3] - self.env_right.curr_reset_pose[:3]
         position_cost_left = 10. * np.sum(
@@ -203,6 +204,10 @@ class UR5HandoverEnv(DualUR5Env):
         orientation_cost_right = max(orientation_cost_right - 0.005, 0.) * 25.
         orientation_cost = orientation_cost_left + orientation_cost_right
 
+        rel_rot_y = R.from_quat(state["r2l/tcp_pose"][3:]).as_euler("zyz")  # Y should be pi
+        allowed_rot_degrees = 10.
+        relative_orientation_cost = 2.0 * max(0., (1. - allowed_rot_degrees / 180.) * np.pi - float(rel_rot_y[1]))
+
         max_force_penalty = 0.01 * calculate_force_penalty(obs, max_force=10)
         retreat_reward = 10. * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
 
@@ -215,20 +220,22 @@ class UR5HandoverEnv(DualUR5Env):
             dropping_cost=dropping_cost,
             orientation_cost=orientation_cost,
             position_cost=position_cost,
+            relative_orienation_cost=relative_orientation_cost,
             max_force_penalty=max_force_penalty,
             retreat_reward=retreat_reward,
             total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_cost
-                         - orientation_cost - position_cost - max_force_penalty + retreat_reward)
+                 - orientation_cost - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward)
         )
         for key, info in cost_info.items():
             self.cost_infos[key] = info + (0. if key not in self.cost_infos else self.cost_infos[key])
 
         if self.reached_goal_state(obs, increment=False):
             self.last_action[:] = 0.
-            return 100. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty + retreat_reward
+            return 100. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty \
+                - relative_orientation_cost + retreat_reward
         else:
             return 0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_cost \
-                - orientation_cost - position_cost - max_force_penalty + retreat_reward
+                - orientation_cost - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward
 
     def reached_goal_state(self, obs, **kwargs) -> bool:
         state = obs["state"]
