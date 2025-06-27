@@ -71,11 +71,9 @@ class ControllerClientWithGripper(threading.Thread):
         return np.linalg.norm(self.get_state()["vel"], 2) > 0.001
 
     def _truncate_check(self):
-        downward_force = self.get_state()["force"][2] > 20.
-        if downward_force:  # TODO add better criteria
+        max_force = np.linalg.norm(self.get_state()["force"]) > 100.
+        if max_force:  # TODO add better criteria
             self._is_truncated.set()
-        else:
-            self._is_truncated.clear()
 
     def auto_release_gripper(self, yes=True):
         if yes:
@@ -128,8 +126,8 @@ class ControllerClientWithGripper(threading.Thread):
         # wait for the controller to finish
         while np.linalg.norm(np.asarray(self.get_state()["Q"]) - self.reset_angles, 2) > 0.001:
             time.sleep(1./self.frequency)
+        self._is_truncated.clear()
         self._reset.clear()
-
 
     async def _update_gripper_state(self):
         pressure = await self.gripper.get_current_pressure()
@@ -146,8 +144,10 @@ class ControllerClientWithGripper(threading.Thread):
         with self.lock:
             state = self.controller.get_state()
             state["gripper"] = self.gripper_state
-        if state["is_truncated"]:
-            self._is_truncated.set()
+            if state["is_truncated"]:
+                self._is_truncated.set()
+            elif self.is_truncated():
+                state["is_truncated"] = 1
         return state
 
     async def run_async(self):
