@@ -26,7 +26,10 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 - [x] do some demos and first training runs
 - [x] ADD MAX FORCE
 - [x] add huge negative penalty for dropping box
-- [ ] Do propper normalization (over rlds dataset)
+- [x] fix observation statistics wrapper
+- [x] I have to fix the "End of file" bug in the controller, otherwise i make no progress
+- [x] Do propper normalization (over rlds dataset)
+- [ ] remodel to immediate reward (on the chosen actions)
 - [ ] make a data consistency checker for the replay buffer
 - [ ] fix observation statistics wrapper
 - [ ] Add pose estimation to automate the pickup

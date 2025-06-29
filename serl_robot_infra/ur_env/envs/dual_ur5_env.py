@@ -87,7 +87,7 @@ class DualUR5Env(gym.Env):
         self.T_left2right = np.linalg.inv(T_base2left) @ T_base2right
         self.T_right2left = np.linalg.inv(self.T_left2right)
         self.collision_detector = ThreadedCollisionDetector(np.eye(4), self.T_left2right, headless=False,
-                                                            distance_margin=0.04)
+                                                            distance_margin=0.02)
         self.collision_detector.start()
 
         if self.camera_mode is not None:
