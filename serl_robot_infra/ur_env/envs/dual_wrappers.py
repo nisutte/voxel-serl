@@ -51,43 +51,57 @@ class DualScaleObservationWrapper(gym.ObservationWrapper):
     (to somewhat normalize the observations space)
     """
 
+    """
+    from analyzing data: 
+        action: -
+        pose pos: 0., 0.1
+        pose rot: 0., 0.05
+        vel pos: 0., 0.06
+        vel rot: 0., 0.02
+        force: 0., 0.003
+        torque: 0., 0.001
+        t_diff: 0.16, 0.5
+    """
+
     def __init__(self,
                  env,
-                 translation_scale=1.,
-                 rotation_scale=0.1,
-                 force_scale=0.001,
-                 torque_scale=0.01
+                 pose_scale=[1. / 0.1, 1./0.05 * 10],
+                 vel_scale = [1. / 0.06, 1. / 0.02 * 10],
+                 force_scale = [1. / 0.003 * 1000, 1. / 0.001 * 100],
+                 t_norm = [0.16, 0.5]
                  ):
         super().__init__(env)
-        self.translation_scale = translation_scale
-        self.rotation_scale = rotation_scale
+        self.pose_scale = pose_scale
+        self.vel_scale = vel_scale
         self.force_scale = force_scale
-        self.torque_scale = torque_scale
+        self.t_norm = t_norm
 
     def scale_wrapper_get_scales(self):
         return dict(
-            translation_scale=self.translation_scale,
-            rotation_scale=self.rotation_scale,
+            pose_scale=self.pose_scale,
+            vel_scale=self.vel_scale,
             force_scale=self.force_scale,
-            torque_scale=self.torque_scale
+            t_norm=self.t_norm
         )
 
     def observation(self, obs):
         for both in ["left/", "right/"]:
-            obs["state"][f"{both}tcp_pose"][:3] *= self.translation_scale
-            obs["state"][f"{both}tcp_pose"][3:] *= self.rotation_scale
-            obs["state"][f"{both}tcp_vel"][:3] *= self.translation_scale
-            obs["state"][f"{both}tcp_vel"][3:] *= self.rotation_scale
-            obs["state"][f"{both}tcp_force"] *= self.force_scale
-            obs["state"][f"{both}tcp_torque"] *= self.torque_scale
+            obs["state"][f"{both}tcp_pose"][:3] *= self.pose_scale[0]
+            obs["state"][f"{both}tcp_pose"][3:] *= self.pose_scale[1]
+            obs["state"][f"{both}tcp_vel"][:3] *= self.vel_scale[0]
+            obs["state"][f"{both}tcp_vel"][3:] *= self.vel_scale[1]
+            obs["state"][f"{both}tcp_force"] *= self.force_scale[0]
+            obs["state"][f"{both}tcp_torque"] *= self.force_scale[1]
+            obs["state"][f"{both}time_diff"] -= self.t_norm[0]
+            obs["state"][f"{both}time_diff"] /= self.t_norm[1]
 
-        obs["state"]["l2r/tcp_pose"][:3] *= self.translation_scale
-        obs["state"]["l2r/tcp_pose"][3:] *= self.rotation_scale
-        obs["state"]["l2r/tcp_vel"][:3] *= self.translation_scale
-        obs["state"]["l2r/tcp_vel"][3:] *= self.rotation_scale
-        obs["state"]["r2l/tcp_pose"][:3] *= self.translation_scale
-        obs["state"]["r2l/tcp_pose"][3:] *= self.rotation_scale
-        obs["state"]["r2l/tcp_vel"][:3] *= self.translation_scale
-        obs["state"]["r2l/tcp_vel"][3:] *= self.rotation_scale
+        obs["state"]["l2r/tcp_pose"][:3] *= self.pose_scale[0]
+        obs["state"]["l2r/tcp_pose"][3:] *= self.pose_scale[1]
+        obs["state"]["l2r/tcp_vel"][:3] *= self.vel_scale[0]
+        obs["state"]["l2r/tcp_vel"][3:] *= self.vel_scale[1]
+        obs["state"]["r2l/tcp_pose"][:3] *= self.pose_scale[0]
+        obs["state"]["r2l/tcp_pose"][3:] *= self.pose_scale[1]
+        obs["state"]["r2l/tcp_vel"][:3] *= self.vel_scale[0]
+        obs["state"]["r2l/tcp_vel"][3:] *= self.vel_scale[1]
         return obs
 
