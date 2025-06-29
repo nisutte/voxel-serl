@@ -22,13 +22,13 @@ class UR5DualCameraConfigRight(DefaultEnvConfig):
         "wrist": "218622279756",
     }
     VOXEL_PARAMS = {
-        "voxel_box_size": [0.25, 0.25, 0.20],  # in m
+        "voxel_box_size": [0.20, 0.20, 0.16],  # in m
         "voxel_grid_shape": [50, 50, 40]
     }
     CAMERA_PARAMS = {
         "wrist": {
             "angle": [30.5, 0., 0.],
-            "center_offset": [-0.008, 0.1, -0.05 - 0.2 / 2.],
+            "center_offset": [-0.008, 0.05, -0.05 - 0.2 / 2.],
         }
     }
     CALIBRATION_PATH = "/home/nico/robot_ipc_control/calibration/T_cam_to_robot_base_left_20250523_153325.npy"
