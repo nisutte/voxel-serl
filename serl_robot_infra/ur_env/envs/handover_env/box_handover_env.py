@@ -56,6 +56,9 @@ class SimpleBehaviorTree:
                 self.env.send_gripper_command(np.array(1))
                 DOWN = -DOWN
 
+            if self.env.curr_pos[2] < 0.01 or self.env.curr_pos[2] > 0.4:
+                break
+
             new_pose = self.env.curr_pos + DOWN
             self.env.send_pos_command(new_pose)
             time.sleep(0.05)
@@ -239,8 +242,8 @@ class UR5HandoverEnv(DualUR5Env):
     def dropping_parcel(self, obs, action) -> bool:
         la, ra = (action[:7], action[7:]) if not self.inverted else (action[7:], action[:7])
         state = obs["state"]
-        drop_left = state["left/gripper_state"][1] < 0.5 and la[-1] < -0.5
-        drop_right = state["right/gripper_state"][1] < 0.5 and ra[-1] < -0.5
+        drop_left = state["right/gripper_state"][1] < 0.5 and la[-1] < -0.5
+        drop_right = state["left/gripper_state"][1] < 0.5 and ra[-1] < -0.5
         # could also be avoided, but lets try it this way (wrong action --> immediate cost)
         if drop_left or drop_right:
             print(f"parcel is dropping: {drop_left}, {drop_right}")
