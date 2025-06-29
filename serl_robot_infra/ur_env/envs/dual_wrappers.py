@@ -65,9 +65,9 @@ class DualScaleObservationWrapper(gym.ObservationWrapper):
 
     def __init__(self,
                  env,
-                 pose_scale=[1. / 0.1, 1./0.05 * 10],
-                 vel_scale = [1. / 0.06, 1. / 0.02 * 10],
-                 force_scale = [1. / 0.003 * 1000, 1. / 0.001 * 100],
+                 pose_scale=[1. / 0.1, 1./0.05 * 1e-1],
+                 vel_scale = [1. / 0.06, 1. / 0.02 * 1e-1],
+                 force_scale = [1. / 0.003 * 1e-3, 1. / 0.001 * 1e-2],
                  t_norm = [0.16, 0.5]
                  ):
         super().__init__(env)

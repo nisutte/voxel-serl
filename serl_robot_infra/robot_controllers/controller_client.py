@@ -152,7 +152,7 @@ class ControllerClientWithGripper(threading.Thread):
 
     async def run_async(self):
         await self.start_controllers()
-        time.sleep(0.5)     # wa00it for controller
+        time.sleep(0.5)     # wait for controller
 
         try:
             self._is_ready.set()
@@ -169,11 +169,7 @@ class ControllerClientWithGripper(threading.Thread):
                     self._reset.set()
 
                 if self._reset.is_set():
-                    if self.get_height() < 0.12:
-                        self.set_target_pose(self.get_state()["pos"] + np.array([0., 0., 0.02, 0., 0., 0., 0.]))
-                        continue
-                    else:
-                        await self._go_to_reset_pose()
+                    await self._go_to_reset_pose()
 
         finally:
             # release gripper, controller stays open
