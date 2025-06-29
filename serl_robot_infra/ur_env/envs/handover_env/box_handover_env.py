@@ -178,7 +178,7 @@ class UR5HandoverEnv(DualUR5Env):
 
         suction_reward = 0.3 * float(state["left/gripper_state"][1] > 0.5)
         suction_cost = 3. * float(state["left/gripper_state"][1] < -0.5)
-        dropping_cost = 25 if self.dropping_parcel(obs, action) else 0
+        dropping_cost = 50 if self.dropping_parcel(obs, action) else 0
 
         cutoff_dist = np.array([0.1, 0.3, 0.1])  # lessen y direction (forward)
         pos_diff_left = state["left/tcp_pose"][:3] - self.env_left.curr_reset_pose[:3]
