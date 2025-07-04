@@ -36,10 +36,9 @@ def construct_homogeneous_matrix(tcp_pose):
     Construct the homogeneous transformation matrix from given pose.
     args: tcp_pose: (x, y, z, qx, qy, qz, qw)
     """
+    T = np.eye(4)
     rotation = R.from_quat(tcp_pose[3:]).as_matrix()
     translation = np.array(tcp_pose[:3])
-    T = np.zeros((4, 4))
     T[:3, :3] = rotation
     T[:3, 3] = translation
-    T[3, 3] = 1
     return T
