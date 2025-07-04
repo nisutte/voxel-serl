@@ -210,7 +210,7 @@ class DualRelativeFrame(gym.Wrapper):
 
     def transform_action(self, action: np.ndarray):
         """
-        Transform action from body(end-effector) frame into into spatial(base) frame
+        Transform action from body(end-effector) frame into spatial(base) frame
         using the rotation matrix
         """
         action = np.array(action)  # in case action is a jax read-only array

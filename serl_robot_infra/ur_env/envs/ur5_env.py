@@ -337,7 +337,7 @@ class UR5Env(gym.Env):
 
         # position
         next_pos = self.curr_pos.copy()
-        next_pos[:3] = next_pos[:3] + action[:3] * self.action_scale[0]
+        next_pos[:3] += action[:3] * self.action_scale[0]
 
         next_pos[3:] = (
                 R.from_mrp(action[3:6] * self.action_scale[1] / 4.) * R.from_quat(next_pos[3:])
@@ -354,7 +354,7 @@ class UR5Env(gym.Env):
 
         obs = self._get_obs(action)
 
-        reward = self.compute_reward(obs, action)
+        reward = self.compute_reward(obs, action)  # TODO add next pos to make immediate reward
         truncated = self._is_truncated()
         # reward = reward if not truncated else reward - 10.  # truncation penalty
         done = self.curr_path_length >= self.max_episode_length or self.reached_goal_state(obs) or truncated
@@ -475,7 +475,7 @@ class UR5Env(gym.Env):
         init_pose = np.concatenate((pos, rot))
 
         print(f"moving to {init_pose}")
-        self._send_taskspace_command(init_pose)
+        self.send_pos_command(init_pose)
         while not self.controller.is_reset():
             time.sleep(0.1)  # wait for the reset operation
 
@@ -646,9 +646,6 @@ class UR5Env(gym.Env):
 
     def send_reset_command(self, reset_Q: np.ndarray):
         self.controller.set_reset_angles(reset_Q)
-
-    def _send_taskspace_command(self, target_pose):
-        self.controller.set_target_pose(target_pose)
 
     def update_currpos(self):
         """
