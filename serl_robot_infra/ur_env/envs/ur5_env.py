@@ -365,7 +365,7 @@ class UR5Env(gym.Env):
             warnings.warn(f"environment could not be within {self.hz} Hz, took {dt:.4f}s!")
         time.sleep(to_sleep)
 
-        return obs, reward, done, truncated, self.get_cost_infos(done)
+        return obs, reward, done, truncated, self.get_cost_infos(done) | {"next_pose": next_pos}
 
     def compute_reward(self, obs, action) -> float:
         return 0.   # overwrite for each task

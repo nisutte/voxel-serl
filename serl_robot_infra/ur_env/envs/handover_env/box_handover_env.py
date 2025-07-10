@@ -2,8 +2,10 @@ import threading
 import numpy as np
 import time
 
-from ur_env.envs.dual_ur5_env import DualUR5Env
 from scipy.spatial.transform import Rotation as R
+
+from ur_env.envs.dual_ur5_env import DualUR5Env
+from ur_env.utils.transformations import pose_to_T
 
 
 class SimpleBehaviorTree:
@@ -168,21 +170,25 @@ class UR5HandoverEnv(DualUR5Env):
         ob = self.combine_obs(ob_left, ob_right)
         return ob, {}
 
-    def compute_reward(self, obs, action) -> float:
+    def compute_reward(self, obs, action, next_poses = {}) -> float:
         state = obs["state"]
+
+        # for now
+        if not "left" in next_poses or not "right" in next_poses:
+            assert 0
 
         step_cost = 0.1
         action_cost = 0.15 * np.sum(np.power(action, 2))
         action_diff_cost = 0.3 * np.sum(np.power(action - self.last_action, 2))
         self.last_action = action
 
-        suction_reward = 0.3 * float(state["left/gripper_state"][1] > 0.5)
-        suction_cost = 3. * float(state["left/gripper_state"][1] < -0.5)
+        suction_reward = 0.3 * (float(state["left/gripper_state"][1] > 0.5) and action[6 + 7 * self.inverted] > 0.5)
+        suction_cost = 3. * (float(state["left/gripper_state"][1] < -0.5) and action[6 + 7 * self.inverted] > -0.5)
         dropping_cost = 50 if self.dropping_parcel(obs, action) else 0
 
-        cutoff_dist = np.array([0.1, 0.3, 0.1])  # lessen y direction (forward)
-        pos_diff_left = state["left/tcp_pose"][:3] - self.env_left.curr_reset_pose[:3]
-        pos_diff_right = state["right/tcp_pose"][:3] - self.env_right.curr_reset_pose[:3]
+        cutoff_dist = np.array([0.08, 0.3, 0.08])  # lessen y direction (forward)
+        pos_diff_left = next_poses.get("left")[:3] - self.env_left.curr_reset_pose[:3]
+        pos_diff_right = next_poses.get("right")[:3] - self.env_right.curr_reset_pose[:3]
         position_cost_left = 10. * np.sum(
             np.where(np.abs(pos_diff_left) > cutoff_dist, np.abs(pos_diff_left - np.sign(pos_diff_left) * cutoff_dist),
                      0.0))
@@ -191,13 +197,14 @@ class UR5HandoverEnv(DualUR5Env):
                      np.abs(pos_diff_right - np.sign(pos_diff_right) * cutoff_dist), 0.0))
         position_cost = position_cost_left + position_cost_right
 
-        orientation_cost_left = 1. - sum(state["left/tcp_pose"][3:] * self.env_left.curr_reset_pose[3:]) ** 2
-        orientation_cost_left = 10. * max(orientation_cost_left - 0.005, 0.)
-        orientation_cost_right = 1. - sum(state["right/tcp_pose"][3:] * self.env_right.curr_reset_pose[3:]) ** 2
+        orientation_cost_left = 1. - sum(next_poses.get("left")[3:] * self.env_left.curr_reset_pose[3:]) ** 2
+        orientation_cost_left = 10. * max(orientation_cost_left - 0.005, 0.)        # 0.005 is around 8°
+        orientation_cost_right = 1. - sum(next_poses.get("right")[3:] * self.env_right.curr_reset_pose[3:]) ** 2
         orientation_cost_right = 10. * max(orientation_cost_right - 0.005, 0.)
         orientation_cost = orientation_cost_left + orientation_cost_right
 
-        rel_rot_y = R.from_quat(state["r2l/tcp_pose"][3:]).as_euler("zyz")  # Y should be pi
+        T_l2r = np.linalg.inv(pose_to_T(next_poses.get("left"))) @ self.T_left2right @ pose_to_T(next_poses.get("right"))
+        rel_rot_y = R.from_matrix(T_l2r[:3, :3]).as_euler("zyz")  # Y should be pi
         allowed_rot_degrees = 10.
         relative_orientation_cost = 2.0 * max(0., (1. - allowed_rot_degrees / 180.) * np.pi - float(rel_rot_y[1]))
 
@@ -219,12 +226,14 @@ class UR5HandoverEnv(DualUR5Env):
             total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_cost
                  - orientation_cost - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward)
         )
+
+        print(cost_info)
         for key, info in cost_info.items():
             self.cost_infos[key] = info + (0. if key not in self.cost_infos else self.cost_infos[key])
 
         if self.reached_goal_state(obs, increment=False):
             self.last_action[:] = 0.
-            return 100. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty \
+            return 1000. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty \
                 - relative_orientation_cost + retreat_reward
         else:
             return 0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_cost \

@@ -98,7 +98,7 @@ class DualUR5Env(gym.Env):
                 self.displayer = ImageDisplayer(combined_queue)
                 self.displayer.start()
 
-    def compute_reward(self, obs, action) -> float:
+    def compute_reward(self, obs, action, next_poses={}) -> float:
         raise NotImplementedError  # overwrite for each task
 
     def reached_goal_state(self, obs, **kwargs) -> bool:
@@ -119,11 +119,11 @@ class DualUR5Env(gym.Env):
         action_right = action[len(action) // 2:]
 
         def step_env_left():
-            global ob_left, truncated_left
+            global ob_left, truncated_left, infos_left
             ob_left, _, _, truncated_left, infos_left = self.env_left.step(action_left)
 
         def step_env_right():
-            global ob_right, truncated_right
+            global ob_right, truncated_right, infos_right
             ob_right, _, _, truncated_right, infos_right = self.env_right.step(action_right)
 
         # Create threads for each function
@@ -140,9 +140,13 @@ class DualUR5Env(gym.Env):
         obs = self.combine_obs(ob_left, ob_right)
 
         truncated = truncated_left or truncated_right or self._is_truncated(obs)
+        if truncated:
+            print(f"is truncated on step {self.env_right.curr_path_length}   {(truncated_left, truncated_right, self._is_truncated(obs))}")
         done = (self.env_left.curr_path_length >= self.env_left.max_episode_length or truncated or
                 self.reached_goal_state(obs))
-        reward = self.compute_reward(obs, action)
+
+        next_poses = {"left": infos_left.get("next_pose"), "right": infos_right.get("next_pose")}
+        reward = self.compute_reward(obs, action, next_poses)
         reward = reward if (not truncated or self.env_left.curr_path_length < 2) else reward - 25.     # cost for truncation
 
         # visualize pointcloud (has to be in the main thread)

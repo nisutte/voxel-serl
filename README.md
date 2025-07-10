@@ -29,9 +29,9 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 - [x] fix observation statistics wrapper
 - [x] I have to fix the "End of file" bug in the controller, otherwise i make no progress
 - [x] Do propper normalization (over rlds dataset)
+- [ ] make a data consistency checker for the replay buffer!
 - [ ] remodel to immediate reward (on the chosen actions)
-- [ ] make a data consistency checker for the replay buffer
-- [ ] fix observation statistics wrapper
+  - TODO test
 - [ ] Add pose estimation to automate the pickup
 - [ ] examine ensemble sizes and subsampling
 - [ ] make position augmentation for pose data (also rotation)
