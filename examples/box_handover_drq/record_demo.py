@@ -37,6 +37,33 @@ def on_esc(key):
         exit_program.set()
 
 
+def plot_poses(data):
+    import matplotlib
+
+    matplotlib.use('TkAgg')  # or 'QtAgg' if you have PyQt5/PySide installed
+    import matplotlib.pyplot as plt
+
+    plt.ion()
+
+    target = np.asarray(data[0])
+    actual = np.asarray(data[1])
+
+    labels = ['X Position', 'Y Position', 'Z Position']
+    fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+
+    for i in range(3):
+        axes[i].plot(np.arange(target.shape[0]), target[:, i], label='Target', linestyle='--')
+        axes[i].plot(np.arange(actual.shape[0]), actual[:, i], label='Actual', linestyle='-')
+        axes[i].set_ylabel(labels[i])
+        axes[i].legend(loc='upper right')
+        axes[i].grid(True)
+
+    axes[2].set_xlabel('Sample Index')
+
+    plt.tight_layout()
+    plt.show(block=True)
+
+
 if __name__ == "__main__":
     fake_env = False
     camera_mode = "pointcloud"
@@ -142,6 +169,12 @@ if __name__ == "__main__":
         print(f'\nProgram was interrupted, cleaning up...  ', e.__str__())
 
     finally:
+        data_left = left_env.controller._poses
+        data_right = right_env.controller._poses
+
+        plot_poses(data_left)
+        plot_poses(data_right)
+
         pbar.close()
         env.close()
         listener_1.stop()

@@ -19,6 +19,10 @@ class ControllerClientWithGripper(threading.Thread):
         self._is_ready = threading.Event()
         self._is_truncated = threading.Event()
         self.lock = threading.Lock()
+        self.plot_pose = True
+
+        if self.plot_pose:
+            self._poses = ([], [])
 
         self.robot_ip = robot_ip
         self.frequency = config.CONTROLLER_HZ
@@ -171,6 +175,10 @@ class ControllerClientWithGripper(threading.Thread):
                 if self._reset.is_set():
                     await self._go_to_reset_pose()
 
+                if self.plot_pose:
+                    self._poses[0].append(self.controller.target_pose.copy())
+                    self._poses[1].append(self.controller.get_state()["pos"])
+
         finally:
             # release gripper, controller stays open
             if self.gripper:
@@ -198,8 +206,11 @@ class ControllerClient:
         self.subscriber.connect(f"tcp://{ip}:{s_port}")
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, "")        # sub to all
 
+        self.target_pose = np.zeros((7,))
+
     def send_target_pose(self, pose: np.ndarray):
         assert pose.shape == (7,)
+        self.target_pose[:] = pose.flatten()
         cmd = {"target_ee_pose": pose.astype(float).tolist()}
         self.publisher.send_json(cmd)
 
