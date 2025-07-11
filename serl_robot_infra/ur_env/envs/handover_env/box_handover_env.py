@@ -227,7 +227,6 @@ class UR5HandoverEnv(DualUR5Env):
                  - orientation_cost - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward)
         )
 
-        print(cost_info)
         for key, info in cost_info.items():
             self.cost_infos[key] = info + (0. if key not in self.cost_infos else self.cost_infos[key])
 

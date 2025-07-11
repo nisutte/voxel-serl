@@ -157,23 +157,7 @@ class DualUR5Env(gym.Env):
         return obs, reward, done, truncated, self.get_cost_infos(done)
 
     def reset(self, **kwargs):
-        def reset_env_left():
-            global ob_left
-            ob_left, _ = self.env_left.reset(**kwargs)
-
-        def reset_env_right():
-            global ob_right
-            ob_right, _ = self.env_right.reset(**kwargs)
-
-        thread_left = threading.Thread(target=reset_env_left)
-        thread_right = threading.Thread(target=reset_env_right)
-        thread_left.start()
-        thread_right.start()
-        thread_left.join()
-        thread_right.join()
-
-        ob = self.combine_obs(ob_left, ob_right)
-        return ob, {}
+        raise NotImplementedError
 
     def combine_obs(self, ob_left, ob_right):
         left_state = {f"left/{key}": ob_left["state"][key] for key in ob_left["state"].keys()}

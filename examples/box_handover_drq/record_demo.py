@@ -171,11 +171,11 @@ if __name__ == "__main__":
         print(f'\nProgram was interrupted, cleaning up...  ', e.__str__())
 
     finally:
-        data_left = left_env.controller._poses
-        data_right = right_env.controller._poses
+        # data_left = left_env.controller._poses
+        # data_right = right_env.controller._poses
 
-        plot_poses(data_left)
-        plot_poses(data_right)
+        # plot_poses(data_left)
+        # plot_poses(data_right)
 
         pbar.close()
         env.close()

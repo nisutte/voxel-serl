@@ -19,7 +19,7 @@ class ControllerClientWithGripper(threading.Thread):
         self._is_ready = threading.Event()
         self._is_truncated = threading.Event()
         self.lock = threading.Lock()
-        self.plot_pose = True
+        self.plot_pose = False
 
         if self.plot_pose:
             self._poses = ([], [])

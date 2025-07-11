@@ -3,7 +3,7 @@ import numpy as np
 
 
 class UR5DualCameraConfigRight(DefaultEnvConfig):
-    RESET_Q = np.array([[-1.7415, -1.8875, 1.9666, -3.2068, -1.5384, -1.6851]])
+    RESET_Q = np.array([[-1.771, -1.943, 2.005, -3.244, -1.597, -1.5412]])
     RANDOM_RESET = False
     RANDOM_XY_RANGE = (0.00,)
     RANDOM_ROT_RANGE = (0.0,)
@@ -39,7 +39,7 @@ class UR5DualCameraConfigLeft(UR5DualCameraConfigRight):
     ZEROMQ_PUBLISHER_PORT: int = 5555
     ZEROMQ_SUBSCRIBER_PORT: int = 5556
 
-    RESET_Q = np.array([[-1.6342, -2.0612, 2.1379, -3.2342, -1.5971, -1.5422]])
+    RESET_Q = np.array([[-1.8715, -1.9142, 1.888, -3.100, -1.5387, -1.6140]])
     REALSENSE_CAMERAS = {
         "wrist": "218622277164"
     }

@@ -16,19 +16,19 @@ class PlotWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         self.trajectory = []
-        obs = self.env.reset(**kwargs)
-        self.trajectory.append(obs)
-        return obs
+        obs, info = self.env.reset(**kwargs)
+        self.trajectory.append({k:v for k, v in obs["state"].items() if k in self._keys})
+        return obs, info
 
     def step(self, action):
         obs, reward, done, truncated, info = self.env.step(action)
-        self.trajectory.append({k:v for k, v in obs.items() if k in self._keys})
+        self.trajectory.append({k:v for k, v in obs["state"].items() if k in self._keys})
         if done and len(self.trajectory) > 25:
             self._plot_trajectory()
-        return obs, reward, done, info
+        return obs, reward, done, truncated, info
 
     def _plot_trajectory(self):
-        trajectory = {k: [np.array(d[k]) for d in self.trajectory] for k in self._keys}
+        trajectory = {k: np.array([d[k] for d in self.trajectory]) for k in self._keys}
         plt.figure(figsize=(10, 8))
 
         num_keys = len(self._keys)
@@ -36,9 +36,9 @@ class PlotWrapper(gym.Wrapper):
         t = np.arange(len(self.trajectory))
         for i, key in enumerate(self._keys):
             data = np.array(trajectory[key])
-            axes[i].plot(t, data[:, 0], marker='o', label="X")
-            axes[i].plot(t, data[:, 1], marker='o', label="Y")
-            axes[i].plot(t, data[:, 2], marker='o', label="Z")
+            axes[i].plot(t, data[:, 0], marker='.', markersize=4, label="X")
+            axes[i].plot(t, data[:, 1], marker='.', markersize=4, label="Y")
+            axes[i].plot(t, data[:, 2], marker='.', markersize=4, label="Z")
             axes[i].set_title(f"Trajectory for {key}")
             axes[i].set_xlabel("step")
             axes[i].set_ylabel("position / velocity")

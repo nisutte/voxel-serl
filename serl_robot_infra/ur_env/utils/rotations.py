@@ -29,4 +29,3 @@ def pose_2_rotvec(quat_pose) -> np.ndarray:
 
 def rotvec_frame_transform(rotvec, rot_matrix):
     return (R.from_matrix(rot_matrix).inv() * R.from_rotvec(rotvec) * R.from_matrix(rot_matrix)).as_rotvec()
-
