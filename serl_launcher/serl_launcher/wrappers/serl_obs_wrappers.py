@@ -22,7 +22,6 @@ class SERLObsWrapper(gym.ObservationWrapper):
         for key, val in self.env.observation_space["state"].items():
             infos[key] = (i, i+val.shape[0])
             i += val.shape[0]
-        print(infos)
 
     def observation(self, obs):
         obs = {
