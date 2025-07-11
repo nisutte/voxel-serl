@@ -10,7 +10,7 @@ from pynput import keyboard
 from pprint import pprint
 
 from ur_env.envs.camera_env.box_picking_camera_env import UR5Env
-from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualScaleObservationWrapper
+from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualNormalizationWrapper
 from ur_env.envs.handover_env.box_handover_env import UR5HandoverEnv
 from ur_env.envs.plot_wrapper import PlotWrapper
 from ur_env.envs.relative_env import DualRelativeFrame
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     env = DualRelativeFrame(env)
     env = DualToMrpWrapper(env)
     env = PlotWrapper(env)
-    env = DualScaleObservationWrapper(env)
+    env = DualNormalizationWrapper(env)
 
     if not fake_env:
         env = DualSpaceMouseIntervention(env)

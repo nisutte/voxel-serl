@@ -45,10 +45,9 @@ class DualToMrpWrapper(gym.ObservationWrapper):
 
         return obs
 
-class DualScaleObservationWrapper(gym.ObservationWrapper):
+class DualNormalizationWrapper(gym.ObservationWrapper):
     """
     This observation wrapper scales the observations with the provided hyperparams
-    (to somewhat normalize the observations space)
     """
 
     """

@@ -39,11 +39,11 @@ from serl_launcher.utils.launcher import (
 from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper
 from serl_launcher.wrappers.observation_statistics_wrapper import ObservationStatisticsWrapper
 from ur_env.envs import UR5Env
-from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualScaleObservationWrapper
+from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualNormalizationWrapper
 from ur_env.envs.handover_env import UR5DualCameraConfigLeft, UR5DualCameraConfigRight
 from ur_env.envs.handover_env.box_handover_env import UR5HandoverEnv
 from ur_env.envs.plot_wrapper import PlotWrapper
-from ur_env.envs.relative_env import RelativeFrame, DualRelativeFrame
+from ur_env.envs.relative_env import DualRelativeFrame
 
 import ur_env
 
@@ -496,7 +496,7 @@ def main(_):
     env = DualToMrpWrapper(env)
     env = PlotWrapper(env)
     env = ObservationStatisticsWrapper(env)
-    env = DualScaleObservationWrapper(env)
+    env = DualNormalizationWrapper(env)
 
     # if FLAGS.actor:
     #     env = DualSpaceMouseIntervention(env)
