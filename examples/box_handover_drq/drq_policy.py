@@ -36,18 +36,14 @@ from serl_launcher.utils.launcher import (
     make_trainer_config,
     make_wandb_logger, make_replay_buffer,
 )
-from serl_launcher.data.data_store import MemoryEfficientReplayBufferDataStore
-from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper, ScaleObservationWrapper
+from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper
 from serl_launcher.wrappers.observation_statistics_wrapper import ObservationStatisticsWrapper
 from ur_env.envs import UR5Env
 from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualScaleObservationWrapper
 from ur_env.envs.handover_env import UR5DualCameraConfigLeft, UR5DualCameraConfigRight
 from ur_env.envs.handover_env.box_handover_env import UR5HandoverEnv
+from ur_env.envs.plot_wrapper import PlotWrapper
 from ur_env.envs.relative_env import RelativeFrame, DualRelativeFrame
-from ur_env.envs.wrappers import SpacemouseIntervention, ToMrpWrapper, ObservationRotationWrapper, \
-    DualSpaceMouseIntervention
-from serl_launcher.vision.data_augmentations import batched_random_rot90_state, batched_random_rot90_voxel, \
-    batched_random_rot90_action
 
 import ur_env
 
@@ -498,6 +494,7 @@ def main(_):
 
     env = DualRelativeFrame(env)
     env = DualToMrpWrapper(env)
+    env = PlotWrapper(env)
     env = ObservationStatisticsWrapper(env)
     env = DualScaleObservationWrapper(env)
 
