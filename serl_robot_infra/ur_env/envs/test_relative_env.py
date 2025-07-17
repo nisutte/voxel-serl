@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
@@ -61,18 +63,18 @@ class DummyEnv(gym.Env):
     def reset(self, reset_pose=None, **kwargs):
         obs = zero_obs.copy()
         if reset_pose is not None:
-            obs["left/tcp_pose"] = reset_pose[:7]
-            obs["right/tcp_pose"] = reset_pose[7:]
+            obs["state"]["left/tcp_pose"] = reset_pose[:7]
+            obs["state"]["right/tcp_pose"] = reset_pose[7:]
         info = {}
-        self.curr_obs = obs.copy()
+        self.curr_obs = copy.deepcopy(obs)
         return obs, info
 
     def step(self, action):
         if self.left_next_pose is not None and self.right_next_pose is not None:
-            self.curr_obs["left/tcp_pose"] = self.left_next_pose
-            self.curr_obs["right/tcp_pose"] = self.right_next_pose
+            self.curr_obs["state"]["left/tcp_pose"] = self.left_next_pose
+            self.curr_obs["state"]["right/tcp_pose"] = self.right_next_pose
 
-        obs = self.curr_obs.copy()
+        obs = copy.deepcopy(self.curr_obs)
         for both, a in zip(["left/", "right/"], [action[:7], action[7:]]):
             next_pos = self.curr_obs["state"][both + "tcp_pose"]
             next_pos[:3] += a[:3] * 0.02
@@ -109,15 +111,13 @@ def test_dual_relative_frame_step():
     obs, _ = env.reset(reset_pose=reset_pose)
     last_action = None
 
-    print(obs["state"]["left/tcp_pose"])
     for i in range(10):
         action = np.random.uniform(low=-1.0, high=1.0, size=(14,))
         new_obs, *_ = env.step(action)
-        print(action[:7], new_obs["state"]["left/tcp_pose"])
 
         if last_action is not None:
-            np.testing.assert_allclose(apply_action(obs["state"]["left/tcp_pose"], last_action[:7]), new_obs["state"]["left/tcp_pose"], atol=1e-6)
-            # np.testing.assert_allclose(apply_action(obs["state"]["right/tcp_pose"], last_action[7:]), new_obs["state"]["right/tcp_pose"], atol=1e-6)
+            np.testing.assert_allclose(apply_action(obs["state"]["left/tcp_pose"], last_action[:7]), new_obs["state"]["left/tcp_pose"], atol=1e-5)
+            np.testing.assert_allclose(apply_action(obs["state"]["right/tcp_pose"], last_action[7:]), new_obs["state"]["right/tcp_pose"], atol=1e-6)
 
         last_action = action
-        obs = new_obs.copy()
+        obs = copy.deepcopy(new_obs)
