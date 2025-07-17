@@ -198,15 +198,15 @@ class UR5HandoverEnv(DualUR5Env):
         position_cost = position_cost_left + position_cost_right
 
         orientation_cost_left = 1. - sum(next_poses.get("left")[3:] * self.env_left.curr_reset_pose[3:]) ** 2
-        orientation_cost_left = 10. * max(orientation_cost_left - 0.005, 0.)        # 0.005 is around 8°
+        orientation_cost_left = 3. * max(orientation_cost_left - 0.005, 0.)        # 0.005 is around 8°
         orientation_cost_right = 1. - sum(next_poses.get("right")[3:] * self.env_right.curr_reset_pose[3:]) ** 2
-        orientation_cost_right = 10. * max(orientation_cost_right - 0.005, 0.)
+        orientation_cost_right = 3. * max(orientation_cost_right - 0.005, 0.)
         orientation_cost = orientation_cost_left + orientation_cost_right
 
         T_l2r = np.linalg.inv(pose_to_T(next_poses.get("left"))) @ self.T_left2right @ pose_to_T(next_poses.get("right"))
         rel_rot_y = R.from_matrix(T_l2r[:3, :3]).as_euler("zyz")  # Y should be pi
         allowed_rot_degrees = 10.
-        relative_orientation_cost = 2.0 * max(0., (1. - allowed_rot_degrees / 180.) * np.pi - float(rel_rot_y[1]))
+        relative_orientation_cost = 1. * max(0., (1. - allowed_rot_degrees / 180.) * np.pi - float(rel_rot_y[1]))
 
         max_force_penalty = 0.01 * calculate_force_penalty(obs, max_force=10)
         retreat_reward = 0.5 * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
