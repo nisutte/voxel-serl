@@ -89,8 +89,8 @@ class DummyEnv(gym.Env):
 
 def test_dual_relative_frame_identity():
     env = DummyEnv()
-    wrapper = DualRelativeFrame(env)  # type: ignore
-    obs, info = wrapper.reset()
+    env = DualRelativeFrame(env)  # type: ignore
+    obs, info = env.reset()
     left_pose = obs["state"]["left/tcp_pose"]
     right_pose = obs["state"]["right/tcp_pose"]
     np.testing.assert_allclose(left_pose[:3], 0, atol=1e-6)
@@ -101,7 +101,7 @@ def test_dual_relative_frame_identity():
 
 def test_dual_relative_frame_step():
     env = DummyEnv()
-    # env = DualRelativeFrame(env)  # type: ignore
+    env = DualRelativeFrame(env)  # type: ignore
 
     # random reset pose
     reset_pose = np.random.uniform(low=-1.0, high=1.0, size=(14,))
