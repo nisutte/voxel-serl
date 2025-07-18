@@ -98,7 +98,7 @@ class DualUR5Env(gym.Env):
                 self.displayer = ImageDisplayer(combined_queue)
                 self.displayer.start()
 
-    def compute_reward(self, obs, action, next_poses={}) -> float:
+    def compute_reward(self, obs, action) -> float:
         raise NotImplementedError  # overwrite for each task
 
     def reached_goal_state(self, obs, **kwargs) -> bool:
@@ -145,8 +145,7 @@ class DualUR5Env(gym.Env):
         done = (self.env_left.curr_path_length >= self.env_left.max_episode_length or truncated or
                 self.reached_goal_state(obs))
 
-        next_poses = {"left": infos_left.get("next_pose"), "right": infos_right.get("next_pose")}
-        reward = self.compute_reward(obs, action, next_poses)
+        reward = self.compute_reward(obs, action)
         reward = reward if (not truncated or self.env_left.curr_path_length < 2) else reward - 25.     # cost for truncation
 
         # visualize pointcloud (has to be in the main thread)
