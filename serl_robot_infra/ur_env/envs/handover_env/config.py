@@ -4,11 +4,11 @@ import numpy as np
 
 class UR5DualCameraConfigRight(DefaultEnvConfig):
     RESET_Q = np.array([[-1.771, -1.943, 2.005, -3.244, -1.597, -1.5412]])
-    RANDOM_RESET = True
+    RANDOM_RESET = False
     RANDOM_POSITION_RANGE = (0.05, 0.0, 0.05)
     RANDOM_ROT_RANGE = (0.03,)
-    ABS_POSE_LIMIT_HIGH = np.array([0.1, 0.68, 0.65, 0.12, 0.2, 0.12])
-    ABS_POSE_LIMIT_LOW = np.array([-0.1, 0.4, 0.45, -0.12, -0.2, -0.12])
+    ABS_POSE_LIMIT_HIGH = np.array([0.1, 0.68, 0.75, 0.15, 0.2, 0.1])
+    ABS_POSE_LIMIT_LOW = np.array([-0.1, 0.4, 0.55, -0.15, -0.2, -0.1])
     ABS_POSE_RANGE_LIMITS = np.array([0.4, 0.8])
     ACTION_SCALE = np.array([0.02, 0.1, 1.], dtype=np.float32)
 
