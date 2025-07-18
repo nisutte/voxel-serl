@@ -31,7 +31,7 @@ class UR5DualCameraConfigRight(DefaultEnvConfig):
             "center_offset": [-0.008, 0.05, -0.05 - 0.2 / 2.],
         }
     }
-    CALIBRATION_PATH = "/home/nico/robot_ipc_control/calibration/T_cam_to_robot_base_left_20250523_153325.npy"
+    CALIBRATION_PATH = "/home/nico/robot_ipc_control/configs/b2r_pose_left_adam.npy"
 
 
 class UR5DualCameraConfigLeft(UR5DualCameraConfigRight):
@@ -43,4 +43,4 @@ class UR5DualCameraConfigLeft(UR5DualCameraConfigRight):
     REALSENSE_CAMERAS = {
         "wrist": "218622277164"
     }
-    CALIBRATION_PATH = "/home/nico/robot_ipc_control/calibration/T_cam_to_robot_base_right_20250523_152927.npy"
+    CALIBRATION_PATH = "/home/nico/robot_ipc_control/configs/b2r_pose_right_adam.npy"
