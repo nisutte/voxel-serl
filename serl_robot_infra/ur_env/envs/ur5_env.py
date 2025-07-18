@@ -162,6 +162,7 @@ class UR5Env(gym.Env):
 
         self.last_state_timestamp = None
         self.curr_timestamp = None
+        self.neutral_gripper_command = False
 
         self.gripper_state = np.zeros((2,), dtype=np.float32)
         self.random_reset = config.RANDOM_RESET
@@ -638,6 +639,9 @@ class UR5Env(gym.Env):
         self.controller.set_target_pose(target_pose=target_pose)
 
     def send_gripper_command(self, gripper_pos: np.ndarray):
+        if self.neutral_gripper_command:
+            gripper_pos = np.array([0.0])
+            self.neutral_gripper_command = False
         self.controller.set_gripper_pos(gripper_pos)
 
     def send_reset_command(self, reset_Q: np.ndarray):

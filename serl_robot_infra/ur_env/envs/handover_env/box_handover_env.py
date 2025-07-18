@@ -106,13 +106,13 @@ class UR5HandoverEnv(DualUR5Env):
 
     def step(self, action: np.ndarray) -> tuple:
         # prevent parcel dropping
-        receiving_env = self.env_right if self.inverted else self.env_left
+        receiving_env, box_env = (self.env_right, self.env_left) if self.inverted else (self.env_left, self.env_right)
         receiving_env.update_currpos()
         gripping_left = receiving_env.gripper_state[1] > 0.5
         would_drop = not gripping_left and action[-1] < -0.5
         if would_drop:
             print("receiving gripper is not gripping, but action is to drop parcel!")
-            action[-1] = 0.0
+            box_env.neutral_gripper_command = True
 
         # step
         if self.inverted:
