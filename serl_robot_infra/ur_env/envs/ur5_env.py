@@ -349,21 +349,19 @@ class UR5Env(gym.Env):
         self.send_pos_command(safe_pos)
         self.send_gripper_command(gripper_action)
         # print(f"sent pose: {safe_pos}  with action {action}    actual pose: {self.curr_pos}")
-
         self.curr_path_length += 1
 
-        obs = self._get_obs(action)
-
-        reward = self.compute_reward(obs, action)  # TODO add next pos to make immediate reward
-        truncated = self._is_truncated()
-        # reward = reward if not truncated else reward - 10.  # truncation penalty
-        done = self.curr_path_length >= self.max_episode_length or self.reached_goal_state(obs) or truncated
-
+        # wait
         dt = time.time() - start_time
         to_sleep = max(0, (1.0 / self.hz) - dt)
-        if to_sleep == 0:
-            warnings.warn(f"environment could not be within {self.hz} Hz, took {dt:.4f}s!")
         time.sleep(to_sleep)
+
+        # get next observation
+        obs = self._get_obs(action)
+        reward = self.compute_reward(obs, action)
+        truncated = self._is_truncated()
+        reward = reward if not truncated else reward - 200.  # truncation penalty
+        done = self.curr_path_length >= self.max_episode_length or self.reached_goal_state(obs) or truncated
 
         return obs, reward, done, truncated, self.get_cost_infos(done) | {"next_pose": next_pos}
 
