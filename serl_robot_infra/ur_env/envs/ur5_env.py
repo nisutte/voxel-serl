@@ -103,7 +103,7 @@ class DefaultEnvConfig:
 
     RESET_Q = np.zeros((6,))
     RANDOM_RESET = (False,)
-    RANDOM_XY_RANGE = (0.0,)
+    RANDOM_POSITION_RANGE = (0.0,)
     RANDOM_Z_RANGE = (0.0)
     RANDOM_ROT_RANGE = (0.0,)
     ABS_POSE_LIMIT_HIGH = np.zeros((6,))
@@ -165,7 +165,7 @@ class UR5Env(gym.Env):
 
         self.gripper_state = np.zeros((2,), dtype=np.float32)
         self.random_reset = config.RANDOM_RESET
-        self.random_xy_range = config.RANDOM_XY_RANGE
+        self.random_position_range = config.RANDOM_POSITION_RANGE
         self.random_z_range = config.RANDOM_Z_RANGE
         self.random_rot_range = config.RANDOM_ROT_RANGE
         self.hz = hz
@@ -338,11 +338,9 @@ class UR5Env(gym.Env):
         # position
         next_pos = self.curr_pos.copy()
         next_pos[:3] += action[:3] * self.action_scale[0]
-
         next_pos[3:] = (
                 R.from_mrp(action[3:6] * self.action_scale[1] / 4.) * R.from_quat(next_pos[3:])
         ).as_quat()             # c * r  --> applies c after r
-
         gripper_action = action[6] * self.action_scale[2]
 
         safe_pos = self.clip_safety_box(next_pos)
@@ -353,7 +351,7 @@ class UR5Env(gym.Env):
 
         # wait
         dt = time.time() - start_time
-        to_sleep = max(0, (1.0 / self.hz) - dt)
+        to_sleep = max(0., (1. / self.hz) - dt)
         time.sleep(to_sleep)
 
         # get next observation
@@ -363,7 +361,7 @@ class UR5Env(gym.Env):
         reward = reward if not truncated else reward - 200.  # truncation penalty
         done = self.curr_path_length >= self.max_episode_length or self.reached_goal_state(obs) or truncated
 
-        return obs, reward, done, truncated, self.get_cost_infos(done) | {"next_pose": next_pos}
+        return obs, reward, done, truncated, self.get_cost_infos(done)
 
     def compute_reward(self, obs, action) -> float:
         return 0.   # overwrite for each task
@@ -397,8 +395,8 @@ class UR5Env(gym.Env):
         reset_pose = np.asarray(self.controller.get_state()["pos"])
 
         if self.random_reset:  # randomize reset position in xy plane
-            reset_shift = np.random.uniform(np.negative(self.random_xy_range), self.random_xy_range, (2,))
-            reset_pose[:2] += reset_shift
+            reset_shift = np.random.uniform(np.negative(self.random_position_range), self.random_position_range, (3,))
+            reset_pose[:3] += reset_shift
 
             if self.random_rot_range[0] > 0.:
                 random_rot = np.random.triangular(np.negative(self.random_rot_range), 0., self.random_rot_range, size=(3,))
