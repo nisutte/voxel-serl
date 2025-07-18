@@ -107,7 +107,21 @@ class UR5HandoverEnv(DualUR5Env):
     def step(self, action: np.ndarray) -> tuple:
         if self.inverted:
             action = np.concatenate((action[7:], action[:7]))
-        return super().step(action)
+
+        # prevent parcel dropping
+        self.env_left.update_currpos()
+        gripping_left = self.env_left.gripper_state[1] > 0.5
+        would_drop = not gripping_left and action[-1] < -0.5
+        if would_drop:
+            print("left gripper not gripping, but action is to drop parcel!")
+            action[-1] = 0.0
+
+        obs, reward, done, truncated, infos = super().step(action)
+        if would_drop:
+            reward -= 50
+            infos["dropping_cost"] = -50 if "dropping_cost" not in infos else infos["dropping_cost"] - 50
+
+        return obs, reward, done, truncated, infos
 
     def reset(self, **kwargs):
         BTleft, BTright = SimpleBehaviorTree(self.env_left), SimpleBehaviorTree(self.env_right)
@@ -180,7 +194,6 @@ class UR5HandoverEnv(DualUR5Env):
 
         suction_reward = 0.3 * (float(state["left/gripper_state"][1] > 0.5) and action[6 + 7 * self.inverted] > 0.5)
         suction_cost = 3. * (float(state["left/gripper_state"][1] < -0.5) and action[6 + 7 * self.inverted] > -0.5)
-        dropping_cost = 50 if self.dropping_parcel(obs, action) else 0
 
         cutoff_dist = np.array([0.08, 0.3, 0.08])  # lessen y direction (forward)
         pos_diff_left = state["left/tcp_pose"][:3] - self.env_left.curr_reset_pose[:3]
@@ -213,13 +226,12 @@ class UR5HandoverEnv(DualUR5Env):
             action_diff_cost=action_diff_cost,
             suction_reward=suction_reward,
             suction_cost=suction_cost,
-            dropping_cost=dropping_cost,
             orientation_cost=orientation_cost,
             position_cost=position_cost,
             relative_orienation_cost=relative_orientation_cost,
             max_force_penalty=max_force_penalty,
             retreat_reward=retreat_reward,
-            total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_cost
+            total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost
                  - orientation_cost - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward)
         )
 
@@ -231,8 +243,8 @@ class UR5HandoverEnv(DualUR5Env):
             return 1000. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty \
                 - relative_orientation_cost + retreat_reward
         else:
-            return 0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - dropping_cost \
-                - orientation_cost - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward
+            return (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - orientation_cost \
+                    - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward)
 
     def reached_goal_state(self, obs, **kwargs) -> bool:
         state = obs["state"]
@@ -242,16 +254,6 @@ class UR5HandoverEnv(DualUR5Env):
         if not "increment" in kwargs or kwargs["increment"] == True:
             self.goal_state_increment = self.goal_state_increment + 1 if goal_state else 0
         return self.goal_state_increment > 4
-
-    def dropping_parcel(self, obs, action) -> bool:
-        la, ra = (action[:7], action[7:]) if not self.inverted else (action[7:], action[:7])
-        state = obs["state"]
-        drop_left = state["right/gripper_state"][1] < 0.5 and la[-1] < -0.5
-        drop_right = state["left/gripper_state"][1] < 0.5 and ra[-1] < -0.5
-        # could also be avoided, but lets try it this way (wrong action --> immediate cost)
-        if drop_left or drop_right:
-            print(f"parcel is dropping: {drop_left}, {drop_right}")
-        return drop_left or drop_right
 
     def _is_truncated(self, obs):
         collision = not self.collision_detector.is_collision_free()
