@@ -105,22 +105,23 @@ class UR5HandoverEnv(DualUR5Env):
             return super().combine_obs(ob_left, ob_right)
 
     def step(self, action: np.ndarray) -> tuple:
-        if self.inverted:
-            action = np.concatenate((action[7:], action[:7]))
-
         # prevent parcel dropping
-        self.env_left.update_currpos()
-        gripping_left = self.env_left.gripper_state[1] > 0.5
+        receiving_env = self.env_right if self.inverted else self.env_left
+        receiving_env.update_currpos()
+        gripping_left = receiving_env.gripper_state[1] > 0.5
         would_drop = not gripping_left and action[-1] < -0.5
         if would_drop:
-            print("left gripper not gripping, but action is to drop parcel!")
+            print("receiving gripper is not gripping, but action is to drop parcel!")
             action[-1] = 0.0
 
+        # step
+        if self.inverted:
+            action = np.concatenate((action[7:], action[:7]))
         obs, reward, done, truncated, infos = super().step(action)
+
         if would_drop:
             reward -= 50
             infos["dropping_cost"] = -50 if "dropping_cost" not in infos else infos["dropping_cost"] - 50
-
         return obs, reward, done, truncated, infos
 
     def reset(self, **kwargs):
