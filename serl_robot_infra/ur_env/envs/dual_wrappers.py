@@ -62,18 +62,12 @@ class DualNormalizationWrapper(gym.ObservationWrapper):
         t_diff: 0.16, 0.5
     """
 
-    def __init__(self,
-                 env,
-                 pose_scale=[1. / 0.1, 1./0.05 * 1e-1],
-                 vel_scale = [1. / 0.06, 1. / 0.02 * 1e-1],
-                 force_scale = [1. / 0.003 * 1e-3, 1. / 0.001 * 1e-2],
-                 t_norm = [0.16, 0.5]
-                 ):
+    def __init__(self, env):
         super().__init__(env)
-        self.pose_scale = pose_scale
-        self.vel_scale = vel_scale
-        self.force_scale = force_scale
-        self.t_norm = t_norm
+        self.pose_scale = [1. / 0.1, 1e-1 / 0.05 ]
+        self.vel_scale = [1. / 0.06, 1e-1 / 0.02]
+        self.force_scale = [1e-3 / 0.003, 1e-2 / 0.001]
+        self.t_norm = [0.16, 1. / 0.5]
 
     def scale_wrapper_get_scales(self):
         return dict(
@@ -92,7 +86,7 @@ class DualNormalizationWrapper(gym.ObservationWrapper):
             obs["state"][f"{both}tcp_force"] *= self.force_scale[0]
             obs["state"][f"{both}tcp_torque"] *= self.force_scale[1]
             obs["state"][f"{both}time_diff"] -= self.t_norm[0]
-            obs["state"][f"{both}time_diff"] /= self.t_norm[1]
+            obs["state"][f"{both}time_diff"] *= self.t_norm[1]
 
         obs["state"]["l2r/tcp_pose"][:3] *= self.pose_scale[0]
         obs["state"]["l2r/tcp_pose"][3:] *= self.pose_scale[1]
