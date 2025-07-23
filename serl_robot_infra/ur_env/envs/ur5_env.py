@@ -574,7 +574,7 @@ class UR5Env(gym.Env):
 
                 if self.camera_mode in ["pointcloud", "rgb_pointcloud"]:
                     pointcloud = image
-                    self.pointcloud_fusion.append(pointcloud, key.split('_')[0])
+                    self.pointcloud_fusion.append(pointcloud, key)
 
             except queue.Empty:
                 input(f"{key} camera frozen. Check connect, then press enter to relaunch...")
@@ -595,7 +595,6 @@ class UR5Env(gym.Env):
 
     def calibrate_pointcloud_fusion(self, visualize=False, num_samples=20):
         self.reset()
-        import open3d as o3d
 
         assert self.camera_mode in ["pointcloud"]
         print("calibrating pointcloud fusion...")

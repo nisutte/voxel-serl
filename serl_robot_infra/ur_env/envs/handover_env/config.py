@@ -19,19 +19,19 @@ class UR5DualCameraConfigRight(DefaultEnvConfig):
     ZEROMQ_SUBSCRIBER_PORT: int = 5559
 
     REALSENSE_CAMERAS = {
-        "wrist": "218622279756",
+        "wrist_right": "218622277164"
     }
     VOXEL_PARAMS = {
         "voxel_box_size": [0.20, 0.20, 0.16],  # in m
         "voxel_grid_shape": [50, 50, 40]
     }
     CAMERA_PARAMS = {
-        "wrist": {
-            "angle": [30.5, 0., 0.],
-            "center_offset": [-0.008, 0.05, -0.05 - 0.2 / 2.],
+        "wrist_right": {
+            "angle": [0., -30., 90.],     # new orientation for the wrist camera
+            "center_offset": [0.0, 0.05-0.007, -0.05 - 0.2 / 2.-0.004],
         }
     }
-    CALIBRATION_PATH = "/home/nico/robot_ipc_control/configs/b2r_pose_left_adam.npy"
+    CALIBRATION_PATH = "/home/nico/robot_ipc_control/configs/b2r_pose_right_adam.npy"
 
 
 class UR5DualCameraConfigLeft(UR5DualCameraConfigRight):
@@ -41,6 +41,12 @@ class UR5DualCameraConfigLeft(UR5DualCameraConfigRight):
 
     RESET_Q = np.array([[-1.8715, -1.9142, 1.888, -3.100, -1.5387, -1.6140]])
     REALSENSE_CAMERAS = {
-        "wrist": "218622277164"
+        "wrist_left": "218622279756",
     }
-    CALIBRATION_PATH = "/home/nico/robot_ipc_control/configs/b2r_pose_right_adam.npy"
+    CAMERA_PARAMS = {
+        "wrist_left": {
+            "angle": [30.5, 0., 0.],
+            "center_offset": [-0.008, 0.05, -0.05 - 0.2 / 2.],
+        }
+    }
+    CALIBRATION_PATH = "/home/nico/robot_ipc_control/configs/b2r_pose_left_adam.npy"
