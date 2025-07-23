@@ -54,27 +54,27 @@ class DualNormalizationWrapper(gym.ObservationWrapper):
     from analyzing data: 
         action: -
         pose pos: 0., 0.1
-        pose rot: 0., 0.05
-        vel pos: 0., 0.06
-        vel rot: 0., 0.02
-        force: 0., 0.003
-        torque: 0., 0.001
+        pose rot: 0., 0.02
+        vel pos: 0., 0.05
+        vel rot: 0., 0.01
+        force: 0., 0.005
+        torque: 0., 0.002
         t_diff: 0.16, 0.5
     """
 
     def __init__(self, env):
         super().__init__(env)
-        self.pose_scale = [1. / 0.1, 1e-1 / 0.05 ]
-        self.vel_scale = [1. / 0.06, 1e-1 / 0.02]
-        self.force_scale = [1e-3 / 0.003, 1e-2 / 0.001]
+        self.pose_scale = [1. / 0.1, 1e-1 / 0.02 ]
+        self.vel_scale = [1. / 0.05, 1e-1 / 0.01]
+        self.force_scale = [1e-3 / 0.005, 1e-2 / 0.002]
         self.t_norm = [0.16, 1. / 0.5]
 
     def scale_wrapper_get_scales(self):
         return dict(
-            pose_scale=self.pose_scale,
-            vel_scale=self.vel_scale,
-            force_scale=self.force_scale,
-            t_norm=self.t_norm
+            pose_scale={"pos": self.pose_scale[0], "rot": self.pose_scale[1]},
+            vel_scale={"pos": self.vel_scale[0], "rot": self.vel_scale[1]},
+            force_scale={"force": self.force_scale[0], "torque": self.force_scale[1] },
+            t_norm={"mean": self.t_norm[0], "std": self.t_norm[1]}
         )
 
     def observation(self, obs):
