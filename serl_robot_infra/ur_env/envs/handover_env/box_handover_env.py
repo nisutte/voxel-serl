@@ -245,7 +245,7 @@ class UR5HandoverEnv(DualUR5Env):
 
         if self.reached_goal_state(obs, increment=False):
             self.last_action[:] = 0.
-            return 1000. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty \
+            return 500. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty \
                 - relative_orientation_cost + retreat_reward
         else:
             return (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - orientation_cost \
