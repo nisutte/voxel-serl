@@ -58,8 +58,8 @@ class SimpleBehaviorTree:
                 self.env.send_gripper_command(np.array(1))
                 DOWN = -DOWN
 
-            if self.env.curr_pos[2] < 0.01 or self.env.curr_pos[2] > 0.4:
-                break
+            if self.env.curr_pos[2] < 0.01:
+                DOWN = -DOWN
 
             new_pose = self.env.curr_pos + DOWN
             self.env.send_pos_command(new_pose)
@@ -129,7 +129,22 @@ class UR5HandoverEnv(DualUR5Env):
         self.env_left.update_currpos()
         self.env_right.update_currpos()
 
+        if self.env_left.gripper_state[1] > 0.5 and self.env_right.gripper_state[1] > 0.5:
+            # both grippers gripping, release the right one
+            self.env_right.send_gripper_command(np.array(-1))
+
+        thread_left = threading.Thread(target=BTleft.retreat, daemon=True)
+        thread_right = threading.Thread(target=BTright.retreat, daemon=True)
+        thread_left.start()
+        thread_right.start()
+        thread_left.join()
+        thread_right.join()
+
+        self.env_left.update_currpos()
+        self.env_right.update_currpos()
+
         already_picked_up = False
+        self.inverted = False
         if self.env_left.gripper_state[1] > 0.5 and self.env_right.gripper_state[1] < 0.5:
             # left gripper gripping, right gripper not gripping
             print("Env is inverted!")
@@ -137,17 +152,15 @@ class UR5HandoverEnv(DualUR5Env):
             already_picked_up = True
         elif self.env_right.gripper_state[1] > 0.5 and self.env_left.gripper_state[1] < 0.5:
             # right gripper gripping, left gripper not gripping
-            self.inverted = False
             already_picked_up = True
-        else:
-            # both grippers not gripping or both gripping (also wrong)
-            self.env_left.send_gripper_command(np.array(0))
-            self.env_right.send_gripper_command(np.array(0))
-            self.inverted = False
+        elif self.env_left.gripper_state[1] > 0.5 and self.env_right.gripper_state[1] > 0.5:
+            # both grippers gripping, release the left one
+            self.env_left.send_gripper_command(np.array(-1))
+            already_picked_up = True
+
 
         def reset_env_left():
             global ob_left
-            BTleft.retreat()
             if not already_picked_up:
                 while not BTright.pickup_done.is_set():
                     time.sleep(0.1)
@@ -161,8 +174,6 @@ class UR5HandoverEnv(DualUR5Env):
 
         def reset_env_right():
             global ob_right
-            BTright.retreat()
-            time.sleep(0.5)
             if not already_picked_up:
                 while not BTright.pickup():
                     time.sleep(0.5)
@@ -210,7 +221,7 @@ class UR5HandoverEnv(DualUR5Env):
         w = np.array([0.5, 0.5, 0.3])   # x, y start after 14°, z later
         def orientation_cost(curr_quat, target_quat):
             rel_rot = R.from_quat(target_quat).inv() * R.from_quat(curr_quat)
-            cost = np.sum(w * rel_rot.as_rotvec() ** 2)
+            cost = sum(w * rel_rot.as_rotvec() ** 2)
             return max(cost - 0.03, 0.)
 
         orientation_cost_left = 20. * orientation_cost(state["left/tcp_pose"][3:], self.env_left.curr_reset_pose[3:])
