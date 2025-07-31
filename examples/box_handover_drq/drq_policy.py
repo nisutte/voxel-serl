@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import copy
 import time
 from functools import partial
 import jax
@@ -11,6 +10,7 @@ import tqdm
 from absl import app, flags
 from flax.training import checkpoints
 from datetime import datetime
+from os.path import exists
 
 import gymnasium as gym
 from gymnasium.wrappers.record_episode_statistics import RecordEpisodeStatistics
@@ -96,6 +96,7 @@ flags.DEFINE_string("demo_path", None, "Path to the demo data.")
 flags.DEFINE_integer("checkpoint_period", 0, "Period to save checkpoints.")
 flags.DEFINE_string("checkpoint_path", '/home/nico/real-world-rl/serl/examples/box_handover_drq/checkpoints',
                     "Path to save checkpoints.")
+flags.DEFINE_string("checkpoint_preload_file", None, help="Path to the checkpoint preload file")
 
 flags.DEFINE_integer("eval_checkpoint_step", 0, "evaluate the policy from ckpt at this step")
 flags.DEFINE_string("log_rlds_path", '/home/nico/real-world-rl/serl/examples/box_handover_drq/rlds',
@@ -353,6 +354,15 @@ def learner(rng, agent: DrQAgent, replay_buffer, wandb_logger=None):
     """
     The learner loop, which runs when "--learner" is set to True.
     """
+    if flags.FLAGS.checkpoint_preload_file and exists(flags.FLAGS.checkpoint_preload_file):
+        print_green(f"Preloading checkpoint from {flags.FLAGS.checkpoint_preload_file}")
+        ckpt = checkpoints.restore_checkpoint(
+            FLAGS.checkpoint_path,
+            agent.state,
+            step=FLAGS.eval_checkpoint_step,
+        )
+        agent = agent.replace(state=ckpt)
+
     # To track the step in the training loop
     update_steps = 0
     global PAUSE_EVENT_FLAG
