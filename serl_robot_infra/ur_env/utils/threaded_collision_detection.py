@@ -105,6 +105,12 @@ class ThreadedCollisionDetector:
 
             # Check for collisions
             collisions = self.C.getCollisions(belowMargin=self.distance_margin)
+            # ignore gripper to gripper collisions
+            for i in range(len(collisions) - 1, -1, -1):
+                names = ["ur_gripper_fill_coll", "ur_vacuum_coll", "_ur_gripper"]
+                if any(name in collisions[i][0] for name in names) and any(name in collisions[i][1] for name in names):
+                    del collisions[i]
+
             self.collision_free = len(collisions) < 1
             if not self.collision_free:
                 for c in collisions:
