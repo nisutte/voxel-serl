@@ -64,9 +64,9 @@ class DualNormalizationWrapper(gym.ObservationWrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        self.pose_scale = [1. / 0.1, 1e-1 / 0.02 ]
-        self.vel_scale = [1. / 0.05, 1e-1 / 0.01]
-        self.force_scale = [1e-3 / 0.005, 1e-2 / 0.002]
+        self.pose_scale = [20., 5. ]
+        self.vel_scale = [20., 5.]
+        self.force_scale = [0.2, 10.]
         self.t_norm = [0.16, 1. / 0.5]
 
     def scale_wrapper_get_scales(self):
