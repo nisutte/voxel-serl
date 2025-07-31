@@ -63,7 +63,7 @@ class PointCloudDisplayer:
     def display(self, points):
         self.pc.clear()
         # MASSIVE! speed up if float64 is used, see: https://github.com/isl-org/Open3D/issues/1045
-        self.pc.points = o3d.utility.Vector3dVector(points[:, :3].astype(np.float64) / 1000.)
+        self.pc.points = o3d.utility.Vector3dVector(points[:, :3].astype(np.float64))       # weird bug...
         if points.shape[1] == 6:
             self.pc.colors = o3d.utility.Vector3dVector(points[:, 3:].astype(np.float64) / 255.)
         self.window.clear_geometries()
@@ -229,11 +229,11 @@ class UR5Env(gym.Env):
 
         if camera_mode in ["pointcloud"]:
             image_space_definition["wrist_pointcloud"] = gym.spaces.Box(
-                0, 255, shape=(50, 50, 40), dtype=np.uint8
+                0, 255, shape=config.VOXEL_PARAMS["voxel_grid_shape"], dtype=np.uint8
             )
         if camera_mode in ["rgb_pointcloud"]:
             image_space_definition["wrist_pointcloud"] = gym.spaces.Box(
-                0, 255, shape=(50, 50, 40, 4), dtype=np.uint8
+                0, 255, shape=(*config.VOXEL_PARAMS["voxel_grid_shape"], 4), dtype=np.uint8
             )
         if camera_mode is not None and camera_mode not in ["rgb", "both", "depth", "pointcloud", "rgb_pointcloud", "grey"]:
             raise NotImplementedError(f"camera mode {camera_mode} not implemented")
