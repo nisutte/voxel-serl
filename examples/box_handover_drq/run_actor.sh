@@ -2,7 +2,7 @@ export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
 export XLA_PYTHON_CLIENT_MEM_FRACTION=.1 && \
 python /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@" \
     --actor \
-    --exp_name="Handover V7 adapt voxel" \
+    --exp_name="Handover V7" \
     --camera_mode pointcloud \
     --max_traj_length 100 \
     --seed 42 \
