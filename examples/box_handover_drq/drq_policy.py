@@ -81,7 +81,7 @@ flags.DEFINE_integer("replay_buffer_capacity", 10000,
                      "Replay buffer capacity.")  # quite low to forget demo trajectories
 
 flags.DEFINE_integer("random_steps", 0, "Sample random actions for this many steps.")
-flags.DEFINE_integer("training_starts", 0, "Training starts after this step.")
+flags.DEFINE_integer("training_starts", 100, "Training starts after this step.")
 flags.DEFINE_integer("steps_per_update", 10, "Number of steps per update the server.")
 
 flags.DEFINE_integer("log_period", 10, "Logging period.")
@@ -329,19 +329,12 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
         if PAUSE_EVENT_FLAG.is_set():
             print_green("Actor loop interrupted")
             response = input(
-                "Do you want to continue (c), save replay buffer and exit (s) or simply exit (e)? "
+                "Do you want to continue (c) or exit (e)? "
             )
             if response == "c":
                 print("Continuing")
                 PAUSE_EVENT_FLAG.clear()
             else:
-                if response == "s":
-                    print("Saving replay buffer")
-                    data_store.save(
-                        "replay_buffer_actor.npz"
-                    )  # not yet supported for QueuedDataStore
-                else:
-                    print("Replay buffer not saved")
                 print("Stopping actor client")
                 client.stop()
                 break
