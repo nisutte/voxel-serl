@@ -542,6 +542,7 @@ def main(_):
             type="memory_efficient_replay_buffer",
             rlds_logger_path=FLAGS.log_rlds_path,
             image_keys=image_keys,
+            preload_rlds_path=FLAGS.preload_rlds_path,
         )
         # set up wandb and logging
         wandb_logger = make_wandb_logger(
