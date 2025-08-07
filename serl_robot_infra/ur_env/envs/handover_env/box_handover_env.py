@@ -215,7 +215,7 @@ class UR5HandoverEnv(DualUR5Env):
         position_cost_left = 10. * np.sum(
             np.where(np.abs(pos_diff_left) > cutoff_dist, np.abs(pos_diff_left - np.sign(pos_diff_left) * cutoff_dist),
                      0.0))
-        position_cost_right = 10. * np.sum(
+        position_cost_right = 20. * np.sum(
             np.where(np.abs(pos_diff_right) > cutoff_dist,
                      np.abs(pos_diff_right - np.sign(pos_diff_right) * cutoff_dist), 0.0))
         position_cost = position_cost_left + position_cost_right
@@ -229,9 +229,8 @@ class UR5HandoverEnv(DualUR5Env):
         orientation_cost_left = 20. * orientation_cost_fun(state["left/tcp_pose"][3:], self.env_left.curr_reset_pose[3:])
         orientation_cost_right = 20. * orientation_cost_fun(state["right/tcp_pose"][3:], self.env_right.curr_reset_pose[3:])
         orientation_cost = orientation_cost_left + orientation_cost_right
-        orientation_cost = 0.       # disable, does not help much
 
-        allowed_rot_degrees = 45.
+        allowed_rot_degrees = 30.
         T_l2r = np.linalg.inv(pose_to_T(state["left/tcp_pose"])) @ self.T_left2right @ pose_to_T(state["right/tcp_pose"])
         rel_rot_y = R.from_matrix(T_l2r[:3, :3]).as_euler("zyz")  # Y should be pi
         relative_orientation_cost = 2. * max(0., (1. - allowed_rot_degrees / 180.) * np.pi - float(rel_rot_y[1]))
