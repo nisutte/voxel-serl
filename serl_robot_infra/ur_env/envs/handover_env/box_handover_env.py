@@ -220,23 +220,28 @@ class UR5HandoverEnv(DualUR5Env):
                      np.abs(pos_diff_right - np.sign(pos_diff_right) * cutoff_dist), 0.0))
         position_cost = position_cost_left + position_cost_right
 
-        w = np.array([0.5, 0.5, 0.3])   # x, y start after 14°, z later
-        def orientation_cost(curr_quat, target_quat):
+        w = np.array([0.2, 0.2, 0.05])  # x, y start after 22°, z after 45°
+        def orientation_cost_fun(curr_quat, target_quat):
             rel_rot = R.from_quat(target_quat).inv() * R.from_quat(curr_quat)
             cost = sum(w * rel_rot.as_rotvec() ** 2)
             return max(cost - 0.03, 0.)
 
-        orientation_cost_left = 20. * orientation_cost(state["left/tcp_pose"][3:], self.env_left.curr_reset_pose[3:])
-        orientation_cost_right = 20. * orientation_cost(state["right/tcp_pose"][3:], self.env_right.curr_reset_pose[3:])
+        orientation_cost_left = 20. * orientation_cost_fun(state["left/tcp_pose"][3:], self.env_left.curr_reset_pose[3:])
+        orientation_cost_right = 20. * orientation_cost_fun(state["right/tcp_pose"][3:], self.env_right.curr_reset_pose[3:])
         orientation_cost = orientation_cost_left + orientation_cost_right
+        orientation_cost = 0.       # disable, does not help much
 
-        allowed_rot_degrees = 20.
+        allowed_rot_degrees = 45.
         T_l2r = np.linalg.inv(pose_to_T(state["left/tcp_pose"])) @ self.T_left2right @ pose_to_T(state["right/tcp_pose"])
         rel_rot_y = R.from_matrix(T_l2r[:3, :3]).as_euler("zyz")  # Y should be pi
-        relative_orientation_cost = 1. * max(0., (1. - allowed_rot_degrees / 180.) * np.pi - float(rel_rot_y[1]))
+        relative_orientation_cost = 2. * max(0., (1. - allowed_rot_degrees / 180.) * np.pi - float(rel_rot_y[1]))
 
         max_force_penalty = 0.3 * calculate_force_penalty(obs, max_force=10)
         retreat_reward = 0.5 * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
+        both_gripping = state["left/gripper_state"][1] > 0.5 and state["right/gripper_state"][1] > 0.5
+        
+        early_retreat_penalty = 1.0 * (action[1] + action[7 + 1]) if both_gripping else 0.
+        both_gripping_huge_action_penalty = 0.5 * (np.sum(np.power(action[:6], 2)) + np.sum(np.power(action[7:13], 2))) if both_gripping else 0.
 
         cost_info = dict(
             step_cost=step_cost,
@@ -249,8 +254,10 @@ class UR5HandoverEnv(DualUR5Env):
             relative_orienation_cost=relative_orientation_cost,
             max_force_penalty=max_force_penalty,
             retreat_reward=retreat_reward,
+            early_retreat_penalty=early_retreat_penalty,
+            both_gripping_huge_action_penalty=both_gripping_huge_action_penalty,
             total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost
-                 - orientation_cost - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward)
+                 - orientation_cost - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty)
         )
 
         for key, info in cost_info.items():
@@ -259,15 +266,15 @@ class UR5HandoverEnv(DualUR5Env):
         if self.reached_goal_state(obs, increment=False):
             self.last_action[:] = 0.
             return 500. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty \
-                - relative_orientation_cost + retreat_reward
+                - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty
         else:
             return (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - orientation_cost \
-                    - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward)
+                    - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty)
 
     def reached_goal_state(self, obs, **kwargs) -> bool:
         state = obs["state"]
         # left gripper gripping, right gripper not gripping
-        goal_state = state['left/gripper_state'][1] > 0.5 and state["right/gripper_state"][1] < 1.
+        goal_state = state['left/gripper_state'][1] > 0.5 and state["right/gripper_state"][1] < 0.5
 
         if not "increment" in kwargs or kwargs["increment"] == True:
             self.goal_state_increment = self.goal_state_increment + 1 if goal_state else 0
