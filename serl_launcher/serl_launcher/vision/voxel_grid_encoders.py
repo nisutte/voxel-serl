@@ -97,6 +97,7 @@ class VoxNet(nn.Module):
     pretrained: bool = False
     scale_factor: float = 1.
     use_color: bool = False         # for color voxels
+    fix_pretrained_gradient: bool = False  # whether to stop gradients for pretrained layers
 
     @nn.compact
     def __call__(
@@ -149,7 +150,7 @@ class VoxNet(nn.Module):
         x = nn.LayerNorm(name=f"{'frozen_' if self.pretrained else ''}LayerNorm_1")(x)
         x = l_relu(x)  # shape (B, (X-4)/2, (Y-4)/2, (Z-4)/2, F)
 
-        if self.pretrained and not self.use_color:      # do not stop the gradient if we use color
+        if self.fix_pretrained_gradient:
             x = jax.lax.stop_gradient(x)
 
         x = conv3d(

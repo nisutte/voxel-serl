@@ -264,6 +264,7 @@ class DrQAgent(SACAgent):
                     final_activation=nn.tanh,
                     pretrained= "pretrained" in encoder_type,
                     use_color="color" in encoder_type,
+                    fix_pretrained_gradient=encoder_kwargs.get("fix_pretrained_gradient", "pretrained" in encoder_type),
                 )
             encoders = {
                 image_key: voxnet       # use the same one
