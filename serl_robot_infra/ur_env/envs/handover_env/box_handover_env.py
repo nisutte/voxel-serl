@@ -196,6 +196,7 @@ class UR5HandoverEnv(DualUR5Env):
 
         self.goal_state_increment = 0
         ob = self.combine_obs(ob_left, ob_right)
+        return ob, {}
 
     def compute_reward(self, obs, action) -> float:
         state = obs["state"]
