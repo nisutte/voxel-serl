@@ -1,8 +1,9 @@
-from threading import Lock
+from threading import Lock, Event
 from typing import Union, Iterable
 import threading
 import queue
 import copy
+import time
 
 import gym
 import jax
@@ -107,41 +108,30 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
         self._logger = None
         self._logger_queue = None
         self._logger_thread = None
+        self._logger_lock = Lock()
+        self._logger_flush = Event()
         self._shutdown_event = None
         self._use_deep_copy = use_deep_copy
+        self._episode_data_queue = queue.Queue(maxsize=500)  # Queue for episode data
 
         if rlds_logger:
             self.step_type = RLDSStepType.TERMINATION  # to init the state for restart
             self._logger = rlds_logger
-            self._setup_async_logging()
+            self._setup_threaded_logging()
 
-    def _setup_async_logging(self):
-        """Setup completely async logging with queue and dedicated thread."""
+    def _setup_threaded_logging(self):
+        """Setup completely threaded logging with queue and dedicated thread."""
         self._logger_queue = queue.Queue(maxsize=1000)  # Buffer for logging operations
         self._shutdown_event = threading.Event()
         
         def logger_worker():
             """Dedicated worker thread for logging operations."""
             while not self._shutdown_event.is_set():
-                try:
-                    log_data = self._logger_queue.get(timeout=0.5)
-                    if log_data is None:  # Shutdown signal
-                        break
-                    
-                    action, obs, reward, step_type = log_data
-                    self._logger(
-                        action=action,
-                        obs=obs,
-                        reward=reward,
-                        step_type=step_type,
-                    )
-                    self._logger_queue.task_done()
-                except queue.Empty:
-                    continue
-                except Exception as e:
-                    print(f"RLDS Logger thread error: {e}")
-                    continue
-
+                if self._logger_flush.is_set():
+                    self._flush_episode_data()
+                    self._logger_flush.clear()
+                time.sleep(0.1)
+                
         self._logger_thread = threading.Thread(target=logger_worker, daemon=True)
         self._logger_thread.start()
 
@@ -164,34 +154,68 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
                 self.step_type,
             )
 
-    # ensure thread safety
+    def _queue_episode_data(self, data):
+        """Queue episode data for later logging (outside of main lock)."""
+        if self._logger:
+            with self._logger_lock:
+                try:
+                    if self.step_type in {
+                        RLDSStepType.TERMINATION,
+                        RLDSStepType.TRUNCATION,
+                    }:
+                        self.step_type = RLDSStepType.RESTART
+                    elif not data["masks"]:  # 0 is done, 1 is not done
+                        self.step_type = RLDSStepType.TERMINATION
+                    elif data["dones"]:
+                        self.step_type = RLDSStepType.TRUNCATION
+                    else:
+                        self.step_type = RLDSStepType.TRANSITION
+
+                    # Copy data and queue for later logging
+                    log_data = self._copy_data_for_logging(data)
+                    log_data = (log_data[0], log_data[1], log_data[2], self.step_type)
+                    self._episode_data_queue.put_nowait(log_data)
+                    
+                    if self.step_type == RLDSStepType.RESTART:
+                        self._logger_flush.set()
+
+                except queue.Full:
+                    print("Warning: Episode data queue full, dropping log entry")
+                except Exception as e:
+                    print(f"Error queuing episode data: {e}")
+
+    def _flush_episode_data(self):
+        """Flush all queued episode data to the logger."""
+        if not self._logger:
+            return
+        
+        start_time = time.time()
+        with self._logger_lock:
+            # Process all queued episode data
+            while not self._episode_data_queue.empty():
+                try:
+                    log_data = self._episode_data_queue.get_nowait()
+                    action, obs, reward, step_type = log_data
+                    self._logger(
+                        action=action,
+                        obs=obs,
+                        reward=reward,
+                        step_type=step_type,
+                    )
+                    self._episode_data_queue.task_done()
+                except queue.Empty:
+                    break
+                except Exception as e:
+                    print(f"Error logging episode data: {e}")
+                    continue
+            # print(f"Flushed episode data in {time.time() - start_time:.3f} seconds")
+
+    # ensure thread safety for insert, not logging
     def insert(self, data):
         with self._lock:
             super(MemoryEfficientReplayBufferDataStore, self).insert(data)
 
-            if self._logger:
-                # handle restart when it was done before
-                if self.step_type in {
-                    RLDSStepType.TERMINATION,
-                    RLDSStepType.TRUNCATION,
-                }:
-                    self.step_type = RLDSStepType.RESTART
-                elif self.step_type == RLDSStepType.TRUNCATION:
-                    self.step_type = RLDSStepType.RESTART
-                elif not data["masks"]:  # 0 is done, 1 is not done
-                    self.step_type = RLDSStepType.TERMINATION
-                elif data["dones"]:
-                    self.step_type = RLDSStepType.TRUNCATION
-                else:
-                    self.step_type = RLDSStepType.TRANSITION
-
-                try:
-                    log_data = self._copy_data_for_logging(data)
-                    self._logger_queue.put_nowait(log_data)
-                except queue.Full:
-                    print("Warning: Logger queue full, dropping log entry")
-                except Exception as e:
-                    print(f"Error queuing log data: {e}")
+        self._queue_episode_data(data)
 
     # ensure thread safety
     def sample(self, *args, **kwargs):
