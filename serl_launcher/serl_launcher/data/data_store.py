@@ -11,6 +11,7 @@ from serl_launcher.data.memory_efficient_replay_buffer import (
 from agentlace.data.data_store import DataStoreBase
 
 from typing import List, Optional, TypeVar
+from concurrent.futures import ThreadPoolExecutor
 
 # import oxe_envlogger if it is installed
 try:
@@ -100,10 +101,12 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
         DataStoreBase.__init__(self, capacity)
         self._lock = Lock()
         self._logger = None
+        self._logger_executor = None
 
         if rlds_logger:
             self.step_type = RLDSStepType.TERMINATION  # to init the state for restart
             self._logger = rlds_logger
+            self._logger_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="Logger")
 
     # ensure thread safety
     def insert(self, data):
@@ -126,9 +129,11 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
                 else:
                     self.step_type = RLDSStepType.TRANSITION
 
-                self._logger(
+                # Submit logging task to thread pool (non-blocking)
+                self._logger_executor.submit(
+                    self._logger,
                     action=data["actions"],
-                    obs=data["next_observations"]["state"],  # only state for now
+                    obs=data["next_observations"],
                     reward=data["rewards"],
                     step_type=self.step_type,
                 )
@@ -147,6 +152,13 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
     # NOTE: method for DataStoreBase
     def get_latest_data(self, from_id: int):
         raise NotImplementedError  # TODO
+
+    def __del__(self):
+        if self._logger_executor:
+            self._logger_executor.shutdown(wait=True)
+        if self._logger:
+            self._logger.close()
+            print("[MemoryEfficientReplayBufferDataStore] RLDS logger closed successfully")
 
 
 def populate_data_store(
