@@ -119,9 +119,11 @@ class UR5HandoverEnv(DualUR5Env):
             action = np.concatenate((action[7:], action[:7]))
         obs, reward, done, truncated, infos = super().step(action)
 
+        if "dropping_cost" not in infos:
+            infos["dropping_cost"] = 0
         if would_drop:
             reward -= 50
-            infos["dropping_cost"] = -50 if "dropping_cost" not in infos else infos["dropping_cost"] - 50
+            infos["dropping_cost"] -= 50
         return obs, reward, done, truncated, infos
 
     def reset(self, **kwargs):
@@ -163,7 +165,7 @@ class UR5HandoverEnv(DualUR5Env):
             global ob_left
             if not already_picked_up:
                 while not BTright.pickup_done.is_set():
-                    time.sleep(0.1)
+                    time.sleep(1)
 
             self.env_left.controller.auto_release_gripper(not self.inverted)
             ob_left, _ = self.env_left.reset(**kwargs)
@@ -194,7 +196,6 @@ class UR5HandoverEnv(DualUR5Env):
 
         self.goal_state_increment = 0
         ob = self.combine_obs(ob_left, ob_right)
-        return ob, {}
 
     def compute_reward(self, obs, action) -> float:
         state = obs["state"]
@@ -233,7 +234,7 @@ class UR5HandoverEnv(DualUR5Env):
         rel_rot_y = R.from_matrix(T_l2r[:3, :3]).as_euler("zyz")  # Y should be pi
         relative_orientation_cost = 1. * max(0., (1. - allowed_rot_degrees / 180.) * np.pi - float(rel_rot_y[1]))
 
-        max_force_penalty = 0.01 * calculate_force_penalty(obs, max_force=10)
+        max_force_penalty = 0.3 * calculate_force_penalty(obs, max_force=10)
         retreat_reward = 0.5 * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
 
         cost_info = dict(
