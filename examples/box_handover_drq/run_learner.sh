@@ -13,6 +13,7 @@ python /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@
     --batch_size 64 \
     --checkpoint_period 1000 \
     --checkpoint_path /home/nico/real-world-rl/serl/examples/box_handover_drq/checkpoints \
+    --log_rlds_path /home/nico/real-world-rl/serl/examples/box_handover_drq/rlds \
     --demo_path /home/nico/real-world-rl/serl/examples/box_handover_drq/box_picking_10_demos_jul31.pkl \
     --checkpoint_preload_path "/home/nico/real-world-rl/serl/examples/box_handover_drq/checkpoints Handover V7 adapt voxel 0731-16:10/" \
     --checkpoint_preload_step 23000 \
