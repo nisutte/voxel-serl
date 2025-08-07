@@ -354,15 +354,6 @@ def learner(rng, agent: DrQAgent, replay_buffer, wandb_logger=None):
     """
     The learner loop, which runs when "--learner" is set to True.
     """
-    if flags.FLAGS.checkpoint_preload_path:
-        print_green(f"Preloading checkpoint from {flags.FLAGS.checkpoint_preload_path}, step {flags.FLAGS.checkpoint_preload_step}")
-        ckpt = checkpoints.restore_checkpoint(
-            FLAGS.checkpoint_preload_path,
-            agent.state,
-            step=FLAGS.checkpoint_preload_step,
-        )
-        agent = agent.replace(state=ckpt)
-
     # To track the step in the training loop
     update_steps = 0
     global PAUSE_EVENT_FLAG
@@ -571,23 +562,37 @@ def main(_):
         sampling_rng = jax.device_put(sampling_rng, device=sharding.replicate())
         replay_buffer, wandb_logger = create_replay_buffer_and_wandb_logger()
 
-        import pickle as pkl
-        with open(FLAGS.demo_path, "rb") as f:
-            trajs = pkl.load(f)
+        # Do either preload a checkpoint or load demo trajectories
+        if flags.FLAGS.checkpoint_preload_path:
+            print_green(
+                f"Preloading checkpoint from {flags.FLAGS.checkpoint_preload_path}, step {flags.FLAGS.checkpoint_preload_step}")
+            ckpt = checkpoints.restore_checkpoint(
+                FLAGS.checkpoint_preload_path,
+                agent.state,
+                step=FLAGS.checkpoint_preload_step,
+            )
+            agent = agent.replace(state=ckpt)
 
-            # check which observations can be ignored for this run
-            to_pop = []
-            for obs_name in [i for i in trajs[0]["observations"].keys()]:
-                if obs_name not in env.observation_space.spaces:
-                    to_pop.append(obs_name)
-            print(f"ignored {to_pop} observation in the demo trajectories")
+        elif FLAGS.demo_path and exists(FLAGS.demo_path):
+            import pickle as pkl
+            with open(FLAGS.demo_path, "rb") as f:
+                trajs = pkl.load(f)
 
-            for traj in trajs:
-                for obs_name in to_pop:
-                    traj["observations"].pop(obs_name)
-                    traj["next_observations"].pop(obs_name)
-                replay_buffer.insert(traj)
-        print(f"replay buffer size: {len(replay_buffer)}")
+                # check which observations can be ignored for this run
+                to_pop = []
+                for obs_name in [i for i in trajs[0]["observations"].keys()]:
+                    if obs_name not in env.observation_space.spaces:
+                        to_pop.append(obs_name)
+                print(f"ignored {to_pop} observation in the demo trajectories")
+
+                for traj in trajs:
+                    for obs_name in to_pop:
+                        traj["observations"].pop(obs_name)
+                        traj["next_observations"].pop(obs_name)
+                    replay_buffer.insert(traj)
+            print(f"replay buffer size: {len(replay_buffer)}")
+        else:
+            raise Exception(f"Either --checkpoint_preload_path or --demo_path must be set")
 
         # learner loop
         print_green("starting learner loop")
