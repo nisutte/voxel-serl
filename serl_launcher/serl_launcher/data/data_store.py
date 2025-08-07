@@ -1,5 +1,8 @@
 from threading import Lock
 from typing import Union, Iterable
+import threading
+import queue
+import copy
 
 import gym
 import jax
@@ -94,6 +97,7 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
             capacity: int,
             image_keys: Iterable[str] = ("image",),
             rlds_logger: Optional[RLDSLogger] = None,
+            use_deep_copy: bool = True,
     ):
         MemoryEfficientReplayBuffer.__init__(
             self, observation_space, action_space, capacity, pixel_keys=image_keys
@@ -101,12 +105,64 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
         DataStoreBase.__init__(self, capacity)
         self._lock = Lock()
         self._logger = None
-        self._logger_executor = None
+        self._logger_queue = None
+        self._logger_thread = None
+        self._shutdown_event = None
+        self._use_deep_copy = use_deep_copy
 
         if rlds_logger:
             self.step_type = RLDSStepType.TERMINATION  # to init the state for restart
             self._logger = rlds_logger
-            self._logger_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="Logger")
+            self._setup_async_logging()
+
+    def _setup_async_logging(self):
+        """Setup completely async logging with queue and dedicated thread."""
+        self._logger_queue = queue.Queue(maxsize=1000)  # Buffer for logging operations
+        self._shutdown_event = threading.Event()
+        
+        def logger_worker():
+            """Dedicated worker thread for logging operations."""
+            while not self._shutdown_event.is_set():
+                try:
+                    log_data = self._logger_queue.get(timeout=0.5)
+                    if log_data is None:  # Shutdown signal
+                        break
+                    
+                    action, obs, reward, step_type = log_data
+                    self._logger(
+                        action=action,
+                        obs=obs,
+                        reward=reward,
+                        step_type=step_type,
+                    )
+                    self._logger_queue.task_done()
+                except queue.Empty:
+                    continue
+                except Exception as e:
+                    print(f"RLDS Logger thread error: {e}")
+                    continue
+
+        self._logger_thread = threading.Thread(target=logger_worker, daemon=True)
+        self._logger_thread.start()
+
+    def _copy_data_for_logging(self, data):
+        """Copy data for logging with configurable strategy."""
+        if self._use_deep_copy:
+            # Deep copy for maximum safety (slower)
+            return (
+                copy.deepcopy(data["actions"]),
+                copy.deepcopy(data["next_observations"]),
+                copy.deepcopy(data["rewards"]),
+                self.step_type,
+            )
+        else:
+            # Shallow copy for better performance (faster)
+            return (
+                data["actions"].copy() if hasattr(data["actions"], 'copy') else data["actions"],
+                data["next_observations"].copy() if hasattr(data["next_observations"], 'copy') else data["next_observations"],
+                data["rewards"].copy() if hasattr(data["rewards"], 'copy') else data["rewards"],
+                self.step_type,
+            )
 
     # ensure thread safety
     def insert(self, data):
@@ -129,14 +185,13 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
                 else:
                     self.step_type = RLDSStepType.TRANSITION
 
-                # Submit logging task to thread pool (non-blocking), brings step_type=0 logging from ~500ms to <1ms
-                self._logger_executor.submit(
-                    self._logger,
-                    action=data["actions"],
-                    obs=data["next_observations"],
-                    reward=data["rewards"],
-                    step_type=self.step_type,
-                )
+                try:
+                    log_data = self._copy_data_for_logging(data)
+                    self._logger_queue.put_nowait(log_data)
+                except queue.Full:
+                    print("Warning: Logger queue full, dropping log entry")
+                except Exception as e:
+                    print(f"Error queuing log data: {e}")
 
     # ensure thread safety
     def sample(self, *args, **kwargs):
@@ -154,8 +209,12 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
         raise NotImplementedError  # TODO
 
     def __del__(self):
-        if self._logger_executor:
-            self._logger_executor.shutdown(wait=True)
+        if self._shutdown_event:
+            self._shutdown_event.set()
+        if self._logger_queue:
+            self._logger_queue.put(None)
+        if self._logger_thread:
+            self._logger_thread.join(timeout=5.0)
         if self._logger:
             self._logger.close()
             print("[MemoryEfficientReplayBufferDataStore] RLDS logger closed successfully")
