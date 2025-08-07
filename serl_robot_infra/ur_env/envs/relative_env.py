@@ -163,7 +163,7 @@ class DualRelativeFrame(gym.Wrapper):
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
 
-        # Update rotation matricies
+        # Update rotation matrices
         self.rot_mat_left = construct_rotation_matrix(obs["state"]["left/tcp_pose"])
         self.rot_mat_right = construct_rotation_matrix(obs["state"]["right/tcp_pose"])
 
