@@ -1,29 +1,7 @@
 [project]
-name = "voxel-serl"
+name = "serl"
 version = "0.1.0"
-description = "Versioning for the voxel serl repo"
+description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.9"
-dependencies = [
-    "absl-py>=0.12.0",
-    "chex>=0.1.85",
-    "distrax>=0.1.2",
-    "einops>=0.6.1",
-    "flax>=0.8.0",
-    "gym>=0.26",
-    "gymnasium>=1.1.1",
-    "imageio>=2.31.1",
-    "ml-collections>=0.1.0",
-    "moviepy>=1.0.3",
-    "numpy>=1.24.3",
-    "optax>=0.1.5",
-    "orbax-checkpoint>=0.5.10",
-    "pre-commit==3.3.3",
-    "scipy==1.11.4",
-    "tensorflow>=2.16.0",
-    "tensorflow-datasets>=4.4.0",
-    "tensorflow-probability>=0.24.0",
-    "tf-keras>=2.18.0",
-    "tqdm>=4.60.0",
-    "wandb>=0.12.14",
-]
+requires-python = ">=3.10"
+dependencies = []
