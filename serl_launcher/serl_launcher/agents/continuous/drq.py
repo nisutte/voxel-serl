@@ -352,7 +352,7 @@ class DrQAgent(SACAgent):
 
         return agent
 
-    def batch_augmentation_fn(self, observations, next_observations, actions, rng, activated=True):
+    def batch_augmentation_fn(self, observations, next_observations, actions, rng, activated=False):
         if not activated:
             return observations, next_observations, actions
         for pixel_key in self.config["image_keys"]:
