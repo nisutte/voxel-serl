@@ -100,8 +100,7 @@ flags.DEFINE_string("checkpoint_preload_path", None, help="Path to the checkpoin
 flags.DEFINE_integer("checkpoint_preload_step", 0, "Step to load from the checkpoint preload")
 
 flags.DEFINE_integer("eval_checkpoint_step", 0, "evaluate the policy from ckpt at this step")
-flags.DEFINE_string("log_rlds_path", '/home/nico/real-world-rl/serl/examples/box_handover_drq/rlds',
-                    "Path to save RLDS logs.")
+flags.DEFINE_string("log_rlds_path", None,"Path to save RLDS logs.")
 flags.DEFINE_string("preload_rlds_path", None, "Path to preload RLDS data.")
 
 flags.DEFINE_boolean(
