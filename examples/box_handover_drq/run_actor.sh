@@ -14,4 +14,6 @@ python /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@
     --encoder_type voxnet-pretrained \
     --state_mask all \
     --encoder_bottleneck_dim 64 \
+    --encoder_kwargs fix_pretrained_gradient \
+    --encoder_kwargs False \
     --debug
