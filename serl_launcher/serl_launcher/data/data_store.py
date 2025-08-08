@@ -232,16 +232,18 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
     def get_latest_data(self, from_id: int):
         raise NotImplementedError  # TODO
 
-    def __del__(self):
-        if self._shutdown_event:
-            self._shutdown_event.set()
-        if self._logger_queue:
-            self._logger_queue.put(None)
-        if self._logger_thread:
-            self._logger_thread.join(timeout=5.0)
+    def close_logger(self):
         if self._logger:
+            self._shutdown_event.set()
+            self._logger_thread.join(timeout=1.0)
             self._logger.close()
+            del self._logger
             print("[MemoryEfficientReplayBufferDataStore] RLDS logger closed successfully")
+        else:
+            print("[MemoryEfficientReplayBufferDataStore] No RLDS logger to close.")
+
+    def __del__(self):
+        self.close_logger()
 
 
 def populate_data_store(

@@ -274,14 +274,12 @@ def make_replay_buffer(
     if rlds_logger_path:
         # from: https://github.com/rail-berkeley/oxe_envlogger
         from oxe_envlogger.rlds_logger import RLDSLogger
-
-        # only log states for now, pc is dying...
         rlds_logger = RLDSLogger(
             observation_space=env.observation_space,
             action_space=env.action_space,
             dataset_name="voxel_serl_rlds_dataset",
             directory=rlds_logger_path,
-            max_episodes_per_file=100,
+            max_episodes_per_file=10,
             max_steps_per_episode=env.env_left.max_episode_length
         )
     else:

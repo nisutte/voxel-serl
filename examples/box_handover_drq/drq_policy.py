@@ -600,9 +600,11 @@ def main(_):
         except KeyboardInterrupt:
             print_green("leraner loop interrupted")
         finally:
-            # Wrap up the learner loop
+            if hasattr(replay_buffer, "close_logger"):
+                replay_buffer.close_logger()
+            print_green("Saved replay buffer")
             env.close()
-            print("Learner loop finished")
+            print_green("Learner loop finished")
 
     elif FLAGS.actor:
         sampling_rng = jax.device_put(sampling_rng, sharding.replicate())
