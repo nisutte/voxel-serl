@@ -344,12 +344,14 @@ class DrQAgent(SACAgent):
         if encoder_type == "voxnet-pretrained":
             from serl_launcher.utils.train_utils import load_pretrained_VoxNet_params
 
-            agent = load_pretrained_VoxNet_params(agent, image_keys)
+            freeze_weights = encoder_kwargs.get("fix_pretrained_gradient", True)
+            agent = load_pretrained_VoxNet_params(agent, freeze_weights, image_keys)
 
         if encoder_type == "voxnet-pretrained-color":
             from serl_launcher.utils.train_utils import load_pretrained_VoxNet_params
 
-            agent = load_pretrained_VoxNet_params(agent, image_keys, color=True)
+            freeze_weights = encoder_kwargs.get("fix_pretrained_gradient", True)
+            agent = load_pretrained_VoxNet_params(agent, freeze_weights, image_keys, color=True)
 
         return agent
 

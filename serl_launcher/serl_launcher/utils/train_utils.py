@@ -132,7 +132,7 @@ def load_resnet10_params(agent, image_keys=("image",), public=True):
     return agent
 
 
-def load_pretrained_VoxNet_params(agent, image_keys=("pointcloud",), color=False):
+def load_pretrained_VoxNet_params(agent, freeze_weights, image_keys=("pointcloud",), color=False):
     ckpt = jnp.load("/home/nico/Downloads/c-11.npz")
     new_params = agent.state.params
 
@@ -140,13 +140,14 @@ def load_pretrained_VoxNet_params(agent, image_keys=("pointcloud",), color=False
         if not f"encoder_{image_key}" in new_params["modules_actor"]["encoder"]:
             print(f"image_key encoder_{image_key} not in encoder")
             continue
+        prefix = "frozen_" if freeze_weights else ""
 
         new_encoder_params = new_params["modules_actor"]["encoder"][
             f"encoder_{image_key}"
         ]
         to_replace = {
-            "frozen_conv_5x5x5": "voxnet/conv1/conv3d/",
-            "frozen_conv_3x3x3": "voxnet/conv2/conv3d/",
+            f"{prefix}conv_5x5x5": "voxnet/conv1/conv3d/",
+            f"{prefix}conv_3x3x3": "voxnet/conv2/conv3d/",
             "conv_2x2x2": "voxnet/conv3/conv3d/"        # TODO test if this is not set
         }
         replaced = []
@@ -162,14 +163,14 @@ def load_pretrained_VoxNet_params(agent, image_keys=("pointcloud",), color=False
         print(f"replaced {replaced} in {image_key}")
 
         # replace LayerNorm params with pretrained BN ones
-        new_encoder_params["frozen_LayerNorm_0"]["bias"] = new_encoder_params["frozen_LayerNorm_0"]["bias"].at[:].set(
+        new_encoder_params[f"{prefix}LayerNorm_0"]["bias"] = new_encoder_params[f"{prefix}LayerNorm_0"]["bias"].at[:].set(
             ckpt["voxnet/conv1/batch_normalization/beta:0"])
-        new_encoder_params["frozen_LayerNorm_0"]["scale"] = new_encoder_params["frozen_LayerNorm_0"]["scale"].at[:].set(
+        new_encoder_params[f"{prefix}LayerNorm_0"]["scale"] = new_encoder_params[f"{prefix}LayerNorm_0"]["scale"].at[:].set(
             ckpt["voxnet/conv1/batch_normalization/gamma:0"])
 
-        new_encoder_params["frozen_LayerNorm_1"]["bias"] = new_encoder_params["frozen_LayerNorm_0"]["bias"].at[:].set(
+        new_encoder_params[f"{prefix}LayerNorm_1"]["bias"] = new_encoder_params[f"{prefix}LayerNorm_0"]["bias"].at[:].set(
             ckpt["voxnet/conv2/batch_normalization/beta:0"])
-        new_encoder_params["frozen_LayerNorm_1"]["scale"] = new_encoder_params["frozen_LayerNorm_0"]["scale"].at[:].set(
+        new_encoder_params[f"{prefix}LayerNorm_1"]["scale"] = new_encoder_params[f"{prefix}LayerNorm_0"]["scale"].at[:].set(
             ckpt["voxnet/conv2/batch_normalization/gamma:0"])
 
     agent = agent.replace(state=agent.state.replace(params=new_params))
