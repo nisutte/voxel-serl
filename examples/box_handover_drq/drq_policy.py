@@ -152,7 +152,6 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
             debug=FLAGS.debug,
         )
         success_counter = 0
-        time_list = []
 
         ckpt = checkpoints.restore_checkpoint(
             FLAGS.checkpoint_path,
@@ -161,7 +160,7 @@ def actor(agent: DrQAgent, data_store, env, sampling_rng):
         )
         agent = agent.replace(state=ckpt)
         find_zero_weights(agent.state.params, print_all=False)
-        action_ensemble = TemporalActionEnsemble(activated=FLAGS.enable_temporal_ensemble_sampling)
+        action_ensemble = TemporalActionEnsemble(activated=FLAGS.enable_temporal_ensemble_sampling, action_shape=(14,))
 
         # examine model parameters if trajs==0
         if FLAGS.eval_n_trajs == 0:
