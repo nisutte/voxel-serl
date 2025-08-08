@@ -15,7 +15,6 @@ from serl_launcher.data.memory_efficient_replay_buffer import (
 from agentlace.data.data_store import DataStoreBase
 
 from typing import List, Optional, TypeVar
-from concurrent.futures import ThreadPoolExecutor
 
 # import oxe_envlogger if it is installed
 try:
@@ -135,25 +134,6 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
         self._logger_thread = threading.Thread(target=logger_worker, daemon=True)
         self._logger_thread.start()
 
-    def _copy_data_for_logging(self, data):
-        """Copy data for logging with configurable strategy."""
-        if self._use_deep_copy:
-            # Deep copy for maximum safety (slower)
-            return (
-                copy.deepcopy(data["actions"]),
-                copy.deepcopy(data["next_observations"]),
-                copy.deepcopy(data["rewards"]),
-                self.step_type,
-            )
-        else:
-            # Shallow copy for better performance (faster)
-            return (
-                data["actions"].copy() if hasattr(data["actions"], 'copy') else data["actions"],
-                data["next_observations"].copy() if hasattr(data["next_observations"], 'copy') else data["next_observations"],
-                data["rewards"].copy() if hasattr(data["rewards"], 'copy') else data["rewards"],
-                self.step_type,
-            )
-
     def _queue_episode_data(self, data):
         """Queue episode data for later logging (outside of main lock)."""
         if self._logger:
@@ -172,8 +152,7 @@ class MemoryEfficientReplayBufferDataStore(MemoryEfficientReplayBuffer, DataStor
                         self.step_type = RLDSStepType.TRANSITION
 
                     # Copy data and queue for later logging
-                    log_data = self._copy_data_for_logging(data)
-                    log_data = (log_data[0], log_data[1], log_data[2], self.step_type)
+                    log_data = (data["actions"], data["next_observations"], data["rewards"], self.step_type)
                     self._episode_data_queue.put_nowait(log_data)
                     
                     if self.step_type == RLDSStepType.RESTART:
