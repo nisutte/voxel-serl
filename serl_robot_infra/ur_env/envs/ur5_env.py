@@ -142,12 +142,14 @@ class UR5Env(gym.Env):
             save_video: bool = False,
             camera_mode: str = "rgb",  # one of (rgb, grey, depth, both(rgb depth), pointcloud, none)
             visualize_camera_mode: bool = True,
+            ema_alpha: float = 0.2,
     ):
         self.max_episode_length = max_episode_length
         self.curr_path_length = 0
         self.action_scale = config.ACTION_SCALE
 
         self.config = config
+        self.ema_alpha = float(ema_alpha)
 
         self.resetQ = config.RESET_Q
         self.curr_reset_pose = np.zeros((7,), dtype=np.float32)
@@ -159,6 +161,8 @@ class UR5Env(gym.Env):
         self.curr_force = np.zeros((3,), dtype=np.float32)
         self.curr_torque = np.zeros((3,), dtype=np.float32)
         self.curr_timestamp_diff = np.zeros((1,), dtype=np.float32)
+        self.ema_force = np.zeros((6,), dtype=np.float32)
+        self.ema_tcp_vel = np.zeros((6,), dtype=np.float32)
 
         self.last_state_timestamp = None
         self.curr_timestamp = None
@@ -249,6 +253,8 @@ class UR5Env(gym.Env):
                 "tcp_torque": gym.spaces.Box(-np.inf, np.inf, shape=(3,)),
                 "action": gym.spaces.Box(-1., 1., shape=self.action_space.shape),
                 "time_diff": gym.spaces.Box(0., np.inf, shape=(1,)),
+                "ema_force": gym.spaces.Box(-np.inf, np.inf, shape=(6,)),
+                "ema_tcp_vel": gym.spaces.Box(-np.inf, np.inf, shape=(6,)),
             }
         )
 
@@ -357,6 +363,13 @@ class UR5Env(gym.Env):
 
         # get next observation
         obs = self._get_obs(action)
+
+        current_force6 = np.concatenate((self.curr_force, self.curr_torque)).astype(np.float32)
+        self.ema_force = (1.0 - self.ema_alpha) * self.ema_force + self.ema_alpha * current_force6
+        self.ema_tcp_vel = (1.0 - self.ema_alpha) * self.ema_tcp_vel + self.ema_alpha * self.curr_vel
+        obs["state"]["ema_force"] = self.ema_force.copy()
+        obs["state"]["ema_tcp_vel"] = self.ema_tcp_vel.copy()
+
         reward = self.compute_reward(obs, action)
         truncated = self._is_truncated()
         reward = reward if not truncated else reward - 200.  # truncation penalty
@@ -489,6 +502,13 @@ class UR5Env(gym.Env):
         self.last_state_timestamp = None
 
         obs = self._get_obs(np.zeros_like(self.last_action))
+
+        current_force6 = np.concatenate((self.curr_force, self.curr_torque)).astype(np.float32)
+        self.ema_force[:] = current_force6
+        self.ema_tcp_vel[:] = self.curr_vel
+        obs["state"]["ema_force"] = self.ema_force.copy()
+        obs["state"]["ema_tcp_vel"] = self.ema_tcp_vel.copy()
+        
         return obs, {"reset_shift": shift}
 
     def save_video_recording(self):

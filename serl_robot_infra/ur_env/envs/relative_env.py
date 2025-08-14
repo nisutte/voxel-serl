@@ -83,6 +83,13 @@ class RelativeFrame(gym.Wrapper):
         obs["state"]["tcp_force"] = self.rotation_matrix.transpose() @ obs["state"]["tcp_force"]
         obs["state"]["tcp_torque"] = rotvec_frame_transform(obs["state"]["tcp_torque"], self.rotation_matrix.transpose())
 
+        if "ema_tcp_vel" in obs["state"]:
+            obs["state"]["ema_tcp_vel"][:3] = self.rotation_matrix_reset.transpose() @ obs["state"]["ema_tcp_vel"][:3]
+            obs["state"]["ema_tcp_vel"][3:6] = rotvec_frame_transform(obs["state"]["ema_tcp_vel"][3:6], self.rotation_matrix.transpose())
+        if "ema_force" in obs["state"]:
+            obs["state"]["ema_force"][:3] = self.rotation_matrix.transpose() @ obs["state"]["ema_force"][:3]
+            obs["state"]["ema_force"][3:6] = rotvec_frame_transform(obs["state"]["ema_force"][3:6], self.rotation_matrix.transpose())
+
         if self.include_relative_pose:
             T_b_o = construct_homogeneous_matrix(obs["state"]["tcp_pose"])
             T_b_r = self.T_r_o_inv @ T_b_o
@@ -191,6 +198,15 @@ class DualRelativeFrame(gym.Wrapper):
             obs["state"][f"{both}action"][:3] = rot_mat.transpose() @ obs["state"][f"{both}action"][:3]
             obs["state"][f"{both}action"][3:6] = rotvec_frame_transform(obs["state"][f"{both}action"][3:6], rot_mat)
 
+            key_v = f"{both}ema_tcp_vel"
+            key_f = f"{both}ema_force"
+            if key_v in obs["state"]:
+                obs["state"][key_v][:3] = rot_mat.transpose() @ obs["state"][key_v][:3]
+                obs["state"][key_v][3:6] = rotvec_frame_transform(obs["state"][key_v][3:6], rot_mat)
+            if key_f in obs["state"]:
+                obs["state"][key_f][:3] = rot_mat.transpose() @ obs["state"][key_f][:3]
+                obs["state"][key_f][3:6] = rotvec_frame_transform(obs["state"][key_f][3:6], rot_mat)
+
         if self.include_relative_pose:
             left_T_b_o = construct_homogeneous_matrix(obs["state"]["left/tcp_pose"])
             left_T_b_r = self.left_T_r_o_inv @ left_T_b_o
@@ -222,6 +238,9 @@ class DualRelativeFrame(gym.Wrapper):
 
 
 class BaseFrameRotation(gym.Wrapper):
+    """
+    Watch out, is legacy code, not used anywhere.
+    """
     def __init__(self, env: Env, rx=0., ry=0., rz=0.):
         super().__init__(env)
         self.base_frame_rotation = R.from_euler("xyz", [rx, ry, rz]).as_matrix()
