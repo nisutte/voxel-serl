@@ -127,26 +127,26 @@ def make_drq_agent(
         policy_kwargs=dict(
             tanh_squash_distribution=True,
             std_parameterization="exp",
-            std_min=1e-5,
-            std_max=5,
+            std_min=1e-3,  # was 1e-5
+            std_max=3,  # was 5
         ),
         critic_network_kwargs=dict(
-            activations=nn.tanh,
+            activations=nn.tanh,  # todo try relu
             use_layer_norm=True,
             hidden_dims=[256, 256],
-            dropout_rate=0.1
+            dropout_rate=0.0  # was 0.1
         ),
         policy_network_kwargs=dict(
-            activations=nn.tanh,
+            activations=nn.tanh,   # todo try relu
             use_layer_norm=True,
             hidden_dims=[256, 256],
             dropout_rate=0.1
         ),
-        temperature_init=1e-2,
+        temperature_init=2e-1,  # was 1e-3
         discount=0.99,  # 0.99
         backup_entropy=True,  # default: False
-        critic_ensemble_size=2,         # todo do as hil serl, no more subsampling (5x less critic params)
-        critic_subsample_size=None,
+        critic_ensemble_size=5,         # changed from 10 to 5
+        critic_subsample_size=2,
         encoder_kwargs=encoder_kwargs,
         # dict(
         #     # pooling_method="spatial_softmax",        # default "spatial_learned_embeddings"
