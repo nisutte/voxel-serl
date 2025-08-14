@@ -3,6 +3,16 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Voxel Serl custom
+*.tfrecord-*
+*.svg
+*.png
+*.h5
+*.npy
+rlds*/
+*log.global
+*.pkl*
+
 # C extensions
 *.so
 
