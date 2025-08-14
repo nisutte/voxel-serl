@@ -23,7 +23,9 @@ from serl_launcher.vision.data_augmentations import (
     batched_random_shift_voxel,
     batched_random_rot90_action,
     batched_random_rot90_state,
-    batched_random_rot90_voxel
+    batched_random_rot90_voxel,
+    add_gaussian_noise_state,
+    build_std_vec_from_slices,
 )
 
 
@@ -109,6 +111,10 @@ class DrQAgent(SACAgent):
                 target_entropy=target_entropy,
                 backup_entropy=backup_entropy,
                 image_keys=image_keys,
+                # augmentation config
+                state_noise_apply_prob=1.0,
+                state_noise_std_assignments=None,   # dict for build_std_vec_from_slices
+                state_noise_std_vec=None,           # precomputed std vec
             ),
         )
 
@@ -355,7 +361,7 @@ class DrQAgent(SACAgent):
 
         return agent
 
-    def batch_augmentation_fn(self, observations, next_observations, actions, rng, activated=False):
+    def rotation_augmentation_fn(self, observations, next_observations, actions, rng, activated=False):
         if not activated:
             return observations, next_observations, actions
         for pixel_key in self.config["image_keys"]:
@@ -431,6 +437,60 @@ class DrQAgent(SACAgent):
                 )
         return observations, next_observations
 
+    def augmentation_fn(self, rng, observations, next_observations, actions):
+        """
+        Apply image, rotation (disabled), and state Gaussian noise augmentations.
+        Expects observations/next_observations with key "state" and image keys.
+        """
+        # Image augmentation
+        rng, obs_rng, next_obs_rng = jax.random.split(rng, 3)
+        obs, next_obs = self.image_augmentation_fn(
+            obs_rng=obs_rng,
+            observations=observations,
+            next_obs_rng=next_obs_rng,
+            next_observations=next_observations,
+        )
+
+        # Rotation augmentation (disabled for now)
+        # rng, rot90_rng = jax.random.split(rng)
+        # obs, next_obs, actions = self.rotation_augmentation_fn(
+        #     observations=obs,
+        #     next_observations=next_obs,
+        #     actions=actions,
+        #     rng=rot90_rng,
+        #     activated=False,
+        # )
+
+        # State Gaussian noise (on normalized state)
+        # Build std_vec once and cache in config if not present. If no assignments, skip.
+        std_vec = self.config.get("state_noise_std_vec")
+        if std_vec is None:
+            assignments = self.config.get("state_noise_std_assignments")
+            if assignments is not None:
+                total_dim = observations["state"].shape[-1]
+                std_vec = build_std_vec_from_slices(total_dim, assignments, default_std=0.0)
+                self = self.replace(config={**self.config, "state_noise_std_vec": std_vec}) # cache std_vec
+
+        apply_prob = float(self.config.get("state_noise_apply_prob", 1.0))
+        if std_vec is not None and apply_prob > 0.0:
+            rng, n1, n2 = jax.random.split(rng, 3)
+            obs = obs.copy(
+                add_or_replace={
+                    "state": add_gaussian_noise_state(
+                        obs["state"], n1, std_vec, apply_prob=apply_prob, num_batch_dims=2
+                    )
+                }
+            )
+            next_obs = next_obs.copy(
+                add_or_replace={
+                    "state": add_gaussian_noise_state(
+                        next_obs["state"], n2, std_vec, apply_prob=apply_prob, num_batch_dims=2
+                    )
+                }
+            )
+
+        return obs, next_obs, actions
+
     @partial(jax.jit, static_argnames=("utd_ratio", "pmap_axis"))
     def update_high_utd(
             self,
@@ -455,20 +515,9 @@ class DrQAgent(SACAgent):
             batch = _unpack(batch)
 
         rng = new_agent.state.rng
-        rng, obs_rng, next_obs_rng, rot90_rng = jax.random.split(rng, 4)
-        obs, next_obs = self.image_augmentation_fn(
-            obs_rng=obs_rng,
-            observations=batch["observations"],
-            next_obs_rng=next_obs_rng,
-            next_observations=batch["next_observations"]
-        )
-
-        obs, next_obs, actions = self.batch_augmentation_fn(
-            observations=obs,
-            next_observations=next_obs,
-            actions=batch["actions"],
-            rng=rot90_rng,
-            activated=self.config["activate_batch_rotation"] > 0,
+        rng, aug_rng = jax.random.split(rng)
+        obs, next_obs, actions = self.augmentation_fn(
+            aug_rng, batch["observations"], batch["next_observations"], batch["actions"]
         )
         batch = batch.copy(
             add_or_replace={
@@ -501,19 +550,9 @@ class DrQAgent(SACAgent):
         # TODO implement K=2 and M=2
 
         rng = new_agent.state.rng
-        rng, obs_rng, next_obs_rng, rot90_rng = jax.random.split(rng, 4)
-        obs, next_obs = self.image_augmentation_fn(
-            obs_rng=obs_rng,
-            observations=batch["observations"],
-            next_obs_rng=next_obs_rng,
-            next_observations=batch["next_observations"]
-        )
-        obs, next_obs, actions = self.batch_augmentation_fn(
-            observations=obs,
-            next_observations=next_obs,
-            actions=batch["actions"],
-            rng=rot90_rng,
-            activated=self.config["activate_batch_rotation"] > 0,
+        rng, aug_rng = jax.random.split(rng)
+        obs, next_obs, actions = self.augmentation_fn(
+            aug_rng, batch["observations"], batch["next_observations"], batch["actions"]
         )
 
         batch = batch.copy(
@@ -544,7 +583,7 @@ class DrQAgent(SACAgent):
             "actions"].copy()
 
         rng, rot90_rng = jax.random.split(self.state.rng, 2)
-        obs, next_obs, actions = self.batch_augmentation_fn(
+        obs, next_obs, actions = self.rotation_augmentation_fn(
             observations=batch["observations"],
             next_observations=batch["next_observations"],
             actions=batch["actions"],
@@ -553,7 +592,7 @@ class DrQAgent(SACAgent):
         )
 
         for _ in range(3):
-            obs, next_obs, actions = self.batch_augmentation_fn(
+            obs, next_obs, actions = self.rotation_augmentation_fn(
                 observations=obs,
                 next_observations=next_obs,
                 actions=actions,
