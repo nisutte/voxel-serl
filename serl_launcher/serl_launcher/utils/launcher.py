@@ -155,12 +155,10 @@ def make_drq_agent(
         #     # num_kp=64,
         # ),
         actor_optimizer_kwargs={
-            "learning_rate": 3e-3,  # 3e-4
-            "freeze_backbone": True,
+            "learning_rate": 1e-3,  # was 3e-4
         },
         critic_optimizer_kwargs={
-            "learning_rate": 3e-3,  # 3e-4
-            "freeze_backbone": True,
+            "learning_rate": 1e-3,  # was 3e-4
         },
     )
     return agent
