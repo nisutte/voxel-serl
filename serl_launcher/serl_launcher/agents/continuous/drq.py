@@ -283,14 +283,10 @@ class DrQAgent(SACAgent):
 
         if actions.shape[-1] == 7:
             state_mask_arr = create_state_mask(state_mask)
-        elif actions.shape[-1] == 14:
-            state_mask_arr = create_dual_state_mask(state_mask)
+            print(f"state_mask: {state_mask}  {state_mask_arr.astype(jnp.int32)}")
         else:
-            raise NotImplementedError(f"Unknown actions shape: {actions.shape}")
+            state_mask_arr = jnp.ones((observations["state"].shape[-1],), dtype=jnp.bool)
 
-        assert observations["state"].shape[1] % state_mask_arr.shape[0] == 0
-        state_mask_arr = jnp.repeat(state_mask_arr, observations["state"].shape[1] // state_mask_arr.shape[0], axis=0)
-        print(f"state_mask: {state_mask}  {state_mask_arr.astype(jnp.int32)}")
         encoder_def = EncodingWrapper(
             encoder=encoders,
             use_proprio=use_proprio,
