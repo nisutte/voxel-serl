@@ -27,5 +27,14 @@ def pose_2_quat(rotvec_pose) -> np.ndarray:
 def pose_2_rotvec(quat_pose) -> np.ndarray:
     return np.concatenate((quat_pose[:3], quat_2_rotvec(quat_pose[3:])))
 
-def rotvec_frame_transform(rotvec, rot_matrix):
-    return (R.from_matrix(rot_matrix).inv() * R.from_rotvec(rotvec) * R.from_matrix(rot_matrix)).as_rotvec()
+def omega_to_mrp_dot(sigma, omega):
+    sigma = np.asarray(sigma)
+    omega = np.asarray(omega)
+    s2 = np.dot(sigma, sigma)
+    sigma_skew = np.array([
+        [0, -sigma[2], sigma[1]],
+        [sigma[2], 0, -sigma[0]],
+        [-sigma[1], sigma[0], 0]
+    ])
+    B = (1 - s2) * np.eye(3) + 2 * sigma_skew + 2 * np.outer(sigma, sigma)
+    return 0.25 * (B @ omega)

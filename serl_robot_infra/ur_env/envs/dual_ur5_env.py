@@ -1,12 +1,10 @@
 import numpy as np
 import gymnasium as gym
 import threading
-from typing import Dict, Tuple
-from pprint import pprint
 
 from ur_env.envs.ur5_env import ImageDisplayer, PointCloudDisplayer, UR5Env
 from ur_env.utils.threaded_collision_detection import ThreadedCollisionDetector
-from ur_env.utils.transformations import T_to_pose, pose_to_T, vel_difference, apply_rotation
+from ur_env.utils.transformations import T_to_pose, pose_to_T, transform_twist
 
 
 class CombinedQueue:
@@ -166,14 +164,17 @@ class DualUR5Env(gym.Env):
         T_l2r = np.linalg.inv(pose_to_T(ob_left["state"]["tcp_pose"])) @ self.T_left2right @ pose_to_T(
             ob_right["state"]["tcp_pose"])
 
-        right_vel_in_left = apply_rotation(ob_right["state"]["tcp_vel"], self.T_right2left, quat=False)
-        left_vel_in_right = apply_rotation(ob_left["state"]["tcp_vel"], self.T_left2right, quat=False)
+        # Both tcp velocities are in base frame, but on the ee (weird i know...)
+        vel_diff_right_base = ob_right["state"]["tcp_vel"] - transform_twist(ob_left["state"]["tcp_vel"], self.T_left2right)
+        vel_diff_left_base = ob_left["state"]["tcp_vel"] - transform_twist(ob_right["state"]["tcp_vel"], self.T_right2left)
+        vel_diff_left = transform_twist(vel_diff_left_base, pose_to_T(ob_left["state"]["tcp_pose"]).T)
+        vel_diff_right = transform_twist(vel_diff_right_base, pose_to_T(ob_right["state"]["tcp_pose"]).T)
 
         diff = {
             "l2r/tcp_pose": T_to_pose(T_l2r),
-            "l2r/tcp_vel": vel_difference(ob_left["state"]["tcp_vel"], right_vel_in_left),
+            "l2r/tcp_vel": vel_diff_left,
             "r2l/tcp_pose": T_to_pose(np.linalg.inv(T_l2r)),
-            "r2l/tcp_vel": vel_difference(ob_right["state"]["tcp_vel"], left_vel_in_right),
+            "r2l/tcp_vel": vel_diff_right,
         }
         ob = {"state": left_state | right_state | diff}
 

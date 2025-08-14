@@ -8,7 +8,7 @@ from ur_env.spacemouse.spacemouse_expert import SpaceMouseExpert
 from ur_env.spacemouse.fake_spacemouse import FakeSpaceMouseExpert
 from scipy.spatial.transform import Rotation as R
 
-from ur_env.utils.rotations import quat_2_euler, quat_2_mrp, rotvec_2_mrp
+from ur_env.utils.rotations import quat_2_euler, quat_2_mrp, omega_to_mrp_dot
 
 ROT90 = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
 ROT_GENERAL = np.array([np.eye(3), ROT90, ROT90 @ ROT90, ROT90.transpose()])
@@ -162,13 +162,18 @@ class ToMrpWrapper(gym.ObservationWrapper):
     def observation(self, observation):
         # convert tcp pose from quat to mrp
         tcp_pose = observation["state"]["tcp_pose"]
-        observation["state"]["tcp_pose"] = np.concatenate(
-            (tcp_pose[:3], quat_2_mrp(tcp_pose[3:]))
-        )
+        tcp_pose_mrp = np.concatenate((tcp_pose[:3], quat_2_mrp(tcp_pose[3:])))
+        observation["state"]["tcp_pose"] = tcp_pose_mrp
 
         if self.transform_obs:
-            observation["state"]["tcp_vel"][3:6] = rotvec_2_mrp(observation["state"]["tcp_vel"][3:6])
-            observation["state"]["tcp_torque"] = rotvec_2_mrp(observation["state"]["tcp_torque"])
+            # Map angular velocity (in reset/body frame) to MRP rate using current MRP
+            sigma = tcp_pose_mrp[3:6]
+            omega = observation["state"]["tcp_vel"][3:6]
+            observation["state"]["tcp_vel"][3:6] = omega_to_mrp_dot(sigma, omega)
+            # If EMA velocity exists, convert its angular part as well
+            if "ema_tcp_vel" in observation["state"]:
+                omega_ema = observation["state"]["ema_tcp_vel"][3:6]
+                observation["state"]["ema_tcp_vel"][3:6] = omega_to_mrp_dot(sigma, omega_ema)
         return observation
 
 

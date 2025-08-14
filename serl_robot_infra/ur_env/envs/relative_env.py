@@ -7,8 +7,6 @@ from franka_env.utils.transformations import (
     construct_rotation_matrix,
 )
 
-from ur_env.utils.rotations import rotvec_frame_transform
-
 class RelativeFrame(gym.Wrapper):
     """
     This wrapper transforms the observation and action to be expressed in the end-effector frame.
@@ -32,7 +30,6 @@ class RelativeFrame(gym.Wrapper):
 
     def __init__(self, env: Env, include_relative_pose=True):
         super().__init__(env)
-        self.rotation_matrix = np.eye((3))
         self.rotation_matrix_reset = np.eye((3))
 
         self.include_relative_pose = include_relative_pose
@@ -50,9 +47,6 @@ class RelativeFrame(gym.Wrapper):
         if "intervene_action" in info:
             info["intervene_action"] = info["intervene_action"]
 
-        # Update rotation matrix
-        self.rotation_matrix = construct_rotation_matrix(obs["state"]["tcp_pose"])
-
         # Transform observation to spatial frame
         transformed_obs = self.transform_observation(obs)
         return transformed_obs, reward, done, truncated, info
@@ -62,8 +56,7 @@ class RelativeFrame(gym.Wrapper):
 
         # obs['state']['tcp_pose'][:2] -= info['reset_shift']  # set rel pose to original reset pose (no random)
 
-        self.rotation_matrix = construct_rotation_matrix(obs["state"]["tcp_pose"])
-        self.rotation_matrix_reset = self.rotation_matrix.copy()
+        self.rotation_matrix_reset = construct_rotation_matrix(obs["state"]["tcp_pose"])
         if self.include_relative_pose:
             # Update transformation matrix from the reset pose's relative frame to base frame
             self.T_r_o_inv = np.linalg.inv(
@@ -78,17 +71,18 @@ class RelativeFrame(gym.Wrapper):
         Transform observations from spatial(base) frame into body(end-effector) frame
         using the rotation and homogeneous matrix
         """
-        obs["state"]["tcp_vel"][:3] = self.rotation_matrix_reset.transpose() @ obs["state"]["tcp_vel"][:3]
-        obs["state"]["tcp_vel"][3:6] = rotvec_frame_transform(obs["state"]["tcp_vel"][3:6], self.rotation_matrix.transpose())
-        obs["state"]["tcp_force"] = self.rotation_matrix.transpose() @ obs["state"]["tcp_force"]
-        obs["state"]["tcp_torque"] = rotvec_frame_transform(obs["state"]["tcp_torque"], self.rotation_matrix.transpose())
+        obs["state"]["tcp_vel"][:3] = self.rotation_matrix_reset.T @ obs["state"]["tcp_vel"][:3]
+        obs["state"]["tcp_vel"][3:6] = self.rotation_matrix_reset.T @ obs["state"]["tcp_vel"][3:6]
+        obs["state"]["tcp_force"] = self.rotation_matrix_reset.T @ obs["state"]["tcp_force"]
+        obs["state"]["tcp_torque"] = self.rotation_matrix_reset.T @ obs["state"]["tcp_torque"]
+        obs["state"]["action"] = self.transform_action_inv(obs["state"]["action"])
 
         if "ema_tcp_vel" in obs["state"]:
-            obs["state"]["ema_tcp_vel"][:3] = self.rotation_matrix_reset.transpose() @ obs["state"]["ema_tcp_vel"][:3]
-            obs["state"]["ema_tcp_vel"][3:6] = rotvec_frame_transform(obs["state"]["ema_tcp_vel"][3:6], self.rotation_matrix.transpose())
+            obs["state"]["ema_tcp_vel"][:3] = self.rotation_matrix_reset.T @ obs["state"]["ema_tcp_vel"][:3]
+            obs["state"]["ema_tcp_vel"][3:6] = self.rotation_matrix_reset.T @ obs["state"]["ema_tcp_vel"][3:6]
         if "ema_force" in obs["state"]:
-            obs["state"]["ema_force"][:3] = self.rotation_matrix.transpose() @ obs["state"]["ema_force"][:3]
-            obs["state"]["ema_force"][3:6] = rotvec_frame_transform(obs["state"]["ema_force"][3:6], self.rotation_matrix.transpose())
+            obs["state"]["ema_force"][:3] = self.rotation_matrix_reset.T @ obs["state"]["ema_force"][:3]
+            obs["state"]["ema_force"][3:6] = self.rotation_matrix_reset.T @ obs["state"]["ema_force"][3:6]
 
         if self.include_relative_pose:
             T_b_o = construct_homogeneous_matrix(obs["state"]["tcp_pose"])
@@ -108,7 +102,7 @@ class RelativeFrame(gym.Wrapper):
         """
         action = np.array(action)  # in case action is a jax read-only array
         action[:3] = self.rotation_matrix_reset @ action[:3]
-        # action[3:6] = (R.from_matrix(self.rotation_matrix_reset) * R.from_mrp(action[3:6]) * R.from_matrix(self.rotation_matrix_reset.transpose())).as_mrp()
+        action[3:6] = self.rotation_matrix_reset @ action[3:6]
         return action
 
     def transform_action_inv(self, action: np.ndarray):
@@ -117,8 +111,8 @@ class RelativeFrame(gym.Wrapper):
         using the rotation matrix.
         """
         action = np.array(action)
-        action[:3] = self.rotation_matrix_reset.transpose() @ action[:3]
-        # action[3:6] = (R.from_matrix(self.rotation_matrix_reset.transpose()) * R.from_mrp(action[3:6]) * R.from_matrix(self.rotation_matrix_reset)).as_mrp()
+        action[:3] = self.rotation_matrix_reset.T @ action[:3]
+        action[3:6] = self.rotation_matrix_reset.T @ action[3:6]
         return action
 
 
@@ -191,21 +185,25 @@ class DualRelativeFrame(gym.Wrapper):
         using the rotation and homogeneous matrix
         """
         for both, rot_mat in zip(("left/", "right/"), (self.rot_mat_left, self.rot_mat_right)):
-            obs["state"][f"{both}tcp_vel"][:3] = rot_mat.transpose() @ obs["state"][f"{both}tcp_vel"][:3]
-            obs["state"][f"{both}tcp_vel"][3:6] = rotvec_frame_transform(obs["state"][f"{both}tcp_vel"][3:6], rot_mat)
-            obs["state"][f"{both}tcp_force"] = rot_mat.transpose() @ obs["state"][f"{both}tcp_force"]
-            obs["state"][f"{both}tcp_torque"] = rotvec_frame_transform(obs["state"][f"{both}tcp_torque"], rot_mat)
-            obs["state"][f"{both}action"][:3] = rot_mat.transpose() @ obs["state"][f"{both}action"][:3]
-            obs["state"][f"{both}action"][3:6] = rotvec_frame_transform(obs["state"][f"{both}action"][3:6], rot_mat)
+            # velocities (twist) rotate as vectors
+            obs["state"][f"{both}tcp_vel"][:3] = rot_mat.T @ obs["state"][f"{both}tcp_vel"][:3]
+            obs["state"][f"{both}tcp_vel"][3:6] = rot_mat.T @ obs["state"][f"{both}tcp_vel"][3:6]
+            # forces/torques are vectors/pseudovectors
+            obs["state"][f"{both}tcp_force"] = rot_mat.T @ obs["state"][f"{both}tcp_force"]
+            obs["state"][f"{both}tcp_torque"] = rot_mat.T @ obs["state"][f"{both}tcp_torque"]
+            # action in observation assumed to be a twist; rotate like velocities
+            obs["state"][f"{both}action"][:3] = rot_mat.T @ obs["state"][f"{both}action"][:3]
+            obs["state"][f"{both}action"][3:6] = rot_mat.T @ obs["state"][f"{both}action"][3:6]
 
             key_v = f"{both}ema_tcp_vel"
             key_f = f"{both}ema_force"
             if key_v in obs["state"]:
-                obs["state"][key_v][:3] = rot_mat.transpose() @ obs["state"][key_v][:3]
-                obs["state"][key_v][3:6] = rotvec_frame_transform(obs["state"][key_v][3:6], rot_mat)
+                obs["state"][key_v][:3] = rot_mat.T @ obs["state"][key_v][:3]
+                obs["state"][key_v][3:6] = rot_mat.T @ obs["state"][key_v][3:6]
             if key_f in obs["state"]:
-                obs["state"][key_f][:3] = rot_mat.transpose() @ obs["state"][key_f][:3]
-                obs["state"][key_f][3:6] = rotvec_frame_transform(obs["state"][key_f][3:6], rot_mat)
+                obs["state"][key_f][:3] = rot_mat.T @ obs["state"][key_f][:3]
+                obs["state"][key_f][3:6] = rot_mat.T @ obs["state"][key_f][3:6]
+
 
         if self.include_relative_pose:
             left_T_b_o = construct_homogeneous_matrix(obs["state"]["left/tcp_pose"])
@@ -226,16 +224,15 @@ class DualRelativeFrame(gym.Wrapper):
 
     def transform_action(self, action: np.ndarray):
         """
-        Transform action from body(end-effector) frame into spatial(base) frame
+        Transform action (12d) from body(end-effector) frame into spatial(base) frame
         using the rotation matrix
         """
         action = np.array(action)  # in case action is a jax read-only array
         action[:3] = self.rot_mat_left @ action[:3]
-        action[3:6] = rotvec_frame_transform(action[3:6], self.rot_mat_left.transpose())
+        action[3:6] = self.rot_mat_left @ action[3:6]
         action[7:10] = self.rot_mat_right @ action[7:10]
-        action[10:13] = rotvec_frame_transform(action[10:13], self.rot_mat_right.transpose())
+        action[10:13] = self.rot_mat_right @ action[10:13]
         return action
-
 
 class BaseFrameRotation(gym.Wrapper):
     """
@@ -265,10 +262,10 @@ class BaseFrameRotation(gym.Wrapper):
         """
         obs["state"]["tcp_pose"][:3] = self.base_frame_rotation @ obs["state"]["tcp_pose"][:3]
         obs["state"]["tcp_pose"][3:] = (R.from_quat(obs["state"]["tcp_pose"][3:6]) * R.from_matrix(self.base_frame_rotation)).as_quat()
-        obs["state"]["tcp_vel"][:3] = self.base_frame_rotation.transpose() @ obs["state"]["tcp_vel"][:3]
-        obs["state"]["tcp_vel"][3:6] = rotvec_frame_transform(obs["state"]["tcp_vel"][3:6], self.base_frame_rotation)
-        obs["state"]["tcp_force"] = self.base_frame_rotation.transpose() @ obs["state"]["tcp_force"]
-        obs["state"]["tcp_torque"] = self.base_frame_rotation.transpose() @ obs["state"]["tcp_torque"]
+        obs["state"]["tcp_vel"][:3] = self.base_frame_rotation.T @ obs["state"]["tcp_vel"][:3]
+        obs["state"]["tcp_vel"][3:6] = self.base_frame_rotation.T @ obs["state"]["tcp_vel"][3:6]
+        obs["state"]["tcp_force"] = self.base_frame_rotation.T @ obs["state"]["tcp_force"]
+        obs["state"]["tcp_torque"] = self.base_frame_rotation.T @ obs["state"]["tcp_torque"]
         return obs
 
     def base_transform_action(self, action: np.ndarray):

@@ -1,12 +1,9 @@
 import gymnasium as gym
 import numpy as np
-import time
 
-from gym import spaces, Env
+from gym import Env
 
-from ur_env.envs.dual_ur5_env import DualUR5Env
-from ur_env.envs.wrappers import SpacemouseIntervention
-from ur_env.utils.rotations import quat_2_mrp, rotvec_2_mrp
+from ur_env.utils.rotations import quat_2_mrp, omega_to_mrp_dot
 
 
 class DualToMrpWrapper(gym.ObservationWrapper):
@@ -38,10 +35,37 @@ class DualToMrpWrapper(gym.ObservationWrapper):
         )
 
         if self.transform_obs:
-            obs["state"]["left/tcp_vel"][3:6] = rotvec_2_mrp(obs["state"]["left/tcp_vel"][3:6])
-            obs["state"]["right/tcp_vel"][3:6] = rotvec_2_mrp(obs["state"]["right/tcp_vel"][3:6])
-            obs["state"]["left/tcp_torque"] = rotvec_2_mrp(obs["state"]["left/tcp_torque"])
-            obs["state"]["right/tcp_torque"] = rotvec_2_mrp(obs["state"]["right/tcp_torque"])
+            # Map angular velocity to MRP rate using current MRPs
+            sigma_left = obs["state"]["left/tcp_pose"][3:6]
+            sigma_right = obs["state"]["right/tcp_pose"][3:6]
+            omega_left = obs["state"]["left/tcp_vel"][3:6]
+            omega_right = obs["state"]["right/tcp_vel"][3:6]
+            obs["state"]["left/tcp_vel"][3:6] = omega_to_mrp_dot(sigma_left, omega_left)
+            obs["state"]["right/tcp_vel"][3:6] = omega_to_mrp_dot(sigma_right, omega_right)
+            # Convert EMA velocities if present
+            if "left/ema_tcp_vel" in obs["state"]:
+                obs["state"]["left/ema_tcp_vel"][3:6] = omega_to_mrp_dot(
+                    sigma_left, obs["state"]["left/ema_tcp_vel"][3:6]
+                )
+            if "right/ema_tcp_vel" in obs["state"]:
+                obs["state"]["right/ema_tcp_vel"][3:6] = omega_to_mrp_dot(
+                    sigma_right, obs["state"]["right/ema_tcp_vel"][3:6]
+                )
+
+            # Convert relative angular velocities if present
+            if "l2r/tcp_vel" in obs["state"]:
+                sigma_l2r = obs["state"]["l2r/tcp_pose"][3:6]
+                omega_l2r = obs["state"]["l2r/tcp_vel"][3:6]
+                obs["state"]["l2r/tcp_vel"][3:6] = omega_to_mrp_dot(sigma_l2r, omega_l2r)
+            if "r2l/tcp_vel" in obs["state"]:
+                sigma_r2l = obs["state"]["r2l/tcp_pose"][3:6]
+                omega_r2l = obs["state"]["r2l/tcp_vel"][3:6]
+                obs["state"]["r2l/tcp_vel"][3:6] = omega_to_mrp_dot(sigma_r2l, omega_r2l)
+
+            # make Rx rotation positive and canonicalize (avoid +/- pi flips)
+            for key in ["l2r/tcp_pose", "r2l/tcp_pose"]:
+                mrp_rx = obs["state"][key][3]
+                obs["state"][key][3] = mrp_rx - np.sign(mrp_rx) * 1.0   # 0.9 -> -0.1 and -0.9 -> 0.1
 
         return obs
 
@@ -64,8 +88,8 @@ class DualNormalizationWrapper(gym.ObservationWrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        self.pose_scale = [10., 2.5 ]
-        self.vel_scale = [20., 5.]
+        self.pose_scale = [10., 10.]
+        self.vel_scale = [20., 20.]
         self.force_scale = [0.2, 10.]
         self.t_norm = [0.16, 1. / 0.5]
 

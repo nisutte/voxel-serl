@@ -1,12 +1,6 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-
-def vel_difference(a, b):
-    vel_pos_diff = np.asarray(b[:3]) - np.asarray(a[:3])
-    vel_rvec_diff = (R.from_rotvec(a[3:]).inv() * R.from_rotvec(b[3:])).as_rotvec()
-    return np.concatenate((vel_pos_diff, vel_rvec_diff))
-
 def pose_to_T(pose):
     """
     pose can be either quat or rot_vec (no euler here!)
@@ -39,4 +33,16 @@ def apply_rotation(pose, T, quat=True):
     else:
         pose_[3:] = (rot.inv() * R.from_rotvec(pose[3:]) * rot).as_rotvec()
     return pose_
+
+def transform_twist(twist, T):
+    """
+    Rotate a 6D spatial velocity (twist) [v; w] into another frame using only rotation.
+    Assumes both twists are measured at their own TCPs but expressed in their local base frames.
+    """
+    Rm = T[:3, :3]
+    twist = np.asarray(twist)
+    out = np.zeros_like(twist)
+    out[:3] = Rm @ twist[:3]
+    out[3:] = Rm @ twist[3:]
+    return out
 
