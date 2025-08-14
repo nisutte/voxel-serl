@@ -494,7 +494,7 @@ def main(_):
     # if FLAGS.actor:
     #     env = DualSpaceMouseIntervention(env)
 
-    env = SERLObsWrapper(env)
+    env = SERLObsWrapper(env, print_info=True)
     env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
     env = RecordEpisodeStatistics(env)
 
