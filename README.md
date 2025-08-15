@@ -35,6 +35,12 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 - [x] make a data consistency checker for the replay buffer!
 - [x] clean up relative env mess (once again, sigh...)
 - [ ] make training more stable and add more useful obs
+  - [x] added state augmentation (noise)
+  - [x] changed activation to relu
+  - [x] made tanh distribution narrower (less noisy actions, less jitter)
+  - [ ] really ensemblize critic!
+  - [ ] update the voxnet with the new relu and LN 
+  - [ ] test dropout?
 - [ ] train only on pc data, like in the picking task
 - [ ] Make a simple uv setup for future usage (from requirements, and also add external JAX links, tough...)
 - [ ] Add pose estimation to automate the pickup
