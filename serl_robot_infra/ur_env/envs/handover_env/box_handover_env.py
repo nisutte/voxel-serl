@@ -29,6 +29,8 @@ class SimpleBehaviorTree:
         max_pos_diff = np.max(np.abs(old - pose)[:3])
         N = int(max_pos_diff / velocity)
         for i in range(N):
+            if self.env.controller.is_truncated():
+                return
             alpha = (1. - np.cos(i / N * np.pi)) / 2.
             self.env.send_pos_command(alpha * pose + (1. - alpha) * old)
             time.sleep(0.02)
@@ -163,10 +165,6 @@ class UR5HandoverEnv(DualUR5Env):
 
         def reset_env_left():
             global ob_left
-            if not already_picked_up:
-                while not BTright.pickup_done.is_set():
-                    time.sleep(1)
-
             self.env_left.controller.auto_release_gripper(not self.inverted)
             ob_left, _ = self.env_left.reset(**kwargs)
             self.env_left.controller.auto_release_gripper(True)

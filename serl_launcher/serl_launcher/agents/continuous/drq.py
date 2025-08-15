@@ -27,6 +27,7 @@ from serl_launcher.vision.data_augmentations import (
     add_gaussian_noise_state,
     build_std_vec_from_slices,
 )
+from ur_env.envs.handover_env.config import get_box_handover_state_noise_assignments
 
 
 class DrQAgent(SACAgent):
@@ -302,11 +303,13 @@ class DrQAgent(SACAgent):
         }
 
         # Define networks
-        # Ensemblize the full critic so each member has its own head (Dense(1))
-        critic_cls = partial(
-            Critic, encoder=encoders["critic"], network=MLP(**critic_network_kwargs)
+        critic_backbone = partial(MLP, **critic_network_kwargs)
+        critic_backbone = ensemblize(critic_backbone, critic_ensemble_size)(
+            name="critic_ensemble"
         )
-        critic_def = ensemblize(critic_cls, critic_ensemble_size)(name="critic")
+        critic_def = partial(
+            Critic, encoder=encoders["critic"], network=critic_backbone
+        )(name="critic")
 
         policy_def = Policy(
             encoder=encoders["actor"],
@@ -459,11 +462,13 @@ class DrQAgent(SACAgent):
         # Build std_vec once and cache in config if not present. If no assignments, skip.
         std_vec = self.config.get("state_noise_std_vec")
         if std_vec is None:
+            total_dim = observations["state"].shape[-1]
             assignments = self.config.get("state_noise_std_assignments")
+            if assignments is None:
+                assignments = get_box_handover_state_noise_assignments(total_dim)
             if assignments is not None:
-                total_dim = observations["state"].shape[-1]
                 std_vec = build_std_vec_from_slices(total_dim, assignments, default_std=0.0)
-                self = self.replace(config={**self.config, "state_noise_std_vec": std_vec}) # cache std_vec
+                self = self.replace(config={**self.config, "state_noise_std_vec": std_vec})  # cache
 
         apply_prob = float(self.config.get("state_noise_apply_prob", 1.0))
         if std_vec is not None and apply_prob > 0.0:

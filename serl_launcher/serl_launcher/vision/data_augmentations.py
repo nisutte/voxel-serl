@@ -254,15 +254,20 @@ def add_gaussian_noise_state(state, rng, std_vec, apply_prob=1.0, *, num_batch_d
     noise_rng, mask_rng = jax.random.split(rng)
     noise = jax.random.normal(noise_rng, flat.shape) * std_b
 
-    def _apply_noise(x):
-        return x + noise
+    def apply_with_mask(args):
+        flat, noise, mask_rng, prob = args
+        mask = jax.random.uniform(mask_rng, (flat.shape[0],)) <= prob
+        mask = mask[:, jnp.newaxis]
+        return jnp.where(mask, flat + noise, flat)
 
-    if apply_prob < 1.0:
-        apply_mask = jax.random.uniform(mask_rng, (flat.shape[0],)) <= apply_prob
-        apply_mask = apply_mask[:, jnp.newaxis]
-        flat_noisy = jnp.where(apply_mask, _apply_noise(flat), flat)
-    else:
-        flat_noisy = _apply_noise(flat)
+    def apply_all(args):
+        flat, noise, mask_rng, prob = args
+        return flat + noise
+
+    prob = jnp.asarray(apply_prob, dtype=flat.dtype)
+    flat_noisy = jax.lax.cond(prob < 1.0,
+                              (flat, noise, mask_rng, prob), apply_with_mask,
+                              (flat, noise, mask_rng, prob), apply_all)
 
     return jnp.reshape(flat_noisy, original_shape)
 

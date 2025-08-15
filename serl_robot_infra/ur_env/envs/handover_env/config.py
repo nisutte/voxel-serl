@@ -50,3 +50,45 @@ class UR5DualCameraConfigLeft(UR5DualCameraConfigRight):
         }
     }
     CALIBRATION_PATH = "/home/nico/robot_ipc_control/configs/b2r_pose_left_adam.npy"
+
+
+def get_box_handover_state_noise_assignments(total_dim: int):
+    """
+    Default per-index std assignment for state Gaussian noise (normalized space)
+    for the box handover task, matching SERLObsWrapper's flattened layout.
+
+    Returns a dict suitable for build_std_vec_from_slices or None if unknown.
+    """
+    pos_std = 0.01
+    mrp_std = 0.01
+    lin_vel_std = 0.02
+    ang_vel_std = 0.01
+    force_std = 0.02
+    torque_std = 0.01
+
+    if total_dim == 104:  # with EMA features
+        return {
+            (0, 3): pos_std, (3, 6): mrp_std,                 # l2r/tcp_pose
+            (6, 9): lin_vel_std, (9, 12): ang_vel_std,        # l2r/tcp_vel
+            # left/action -> no noise
+            (19, 22): force_std, (22, 25): torque_std,        # left/ema_force
+            (25, 28): lin_vel_std, (28, 31): ang_vel_std,     # left/ema_tcp_vel
+            # left/gripper_state -> 0
+            (33, 36): force_std,                              # left/tcp_force
+            (36, 39): pos_std, (39, 42): mrp_std,             # left/tcp_pose
+            (42, 45): torque_std,                             # left/tcp_torque
+            (45, 48): lin_vel_std, (48, 51): ang_vel_std,     # left/tcp_vel
+            # left/time_diff -> 0
+            (52, 55): pos_std, (55, 58): mrp_std,             # r2l/tcp_pose
+            (58, 61): lin_vel_std, (61, 64): ang_vel_std,     # r2l/tcp_vel
+            # right/action -> no noise
+            (71, 74): force_std, (74, 77): torque_std,        # right/ema_force
+            (77, 80): lin_vel_std, (80, 83): ang_vel_std,     # right/ema_tcp_vel
+            # right/gripper_state -> 0
+            (85, 88): force_std,                              # right/tcp_force
+            (88, 91): pos_std, (91, 94): mrp_std,             # right/tcp_pose
+            (94, 97): torque_std,                             # right/tcp_torque
+            (97, 100): lin_vel_std, (100, 103): ang_vel_std,  # right/tcp_vel
+            # right/time_diff -> 0
+        }
+    return None

@@ -131,18 +131,18 @@ def make_drq_agent(
             std_max=3,  # was 5
         ),
         critic_network_kwargs=dict(
-            activations=nn.tanh,  # todo try relu
+            activations=nn.relu,  # todo try relu
             use_layer_norm=True,
             hidden_dims=[256, 256],
             dropout_rate=0.0  # was 0.1
         ),
         policy_network_kwargs=dict(
-            activations=nn.tanh,   # todo try relu
+            activations=nn.relu,   # todo try relu
             use_layer_norm=True,
             hidden_dims=[256, 256],
-            dropout_rate=0.1
+            dropout_rate=0.0
         ),
-        temperature_init=2e-1,  # was 1e-3
+        temperature_init=1e-1,  # was 1e-3
         discount=0.99,  # 0.99
         backup_entropy=True,  # default: False
         critic_ensemble_size=5,         # changed from 10 to 5
@@ -155,10 +155,10 @@ def make_drq_agent(
         #     # num_kp=64,
         # ),
         actor_optimizer_kwargs={
-            "learning_rate": 1e-3,  # was 3e-4
+            "learning_rate": 3e-4,  # was 3e-4
         },
         critic_optimizer_kwargs={
-            "learning_rate": 1e-3,  # was 3e-4
+            "learning_rate": 3e-4,  # was 3e-4
         },
     )
     return agent
