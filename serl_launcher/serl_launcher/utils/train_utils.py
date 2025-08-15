@@ -174,6 +174,7 @@ def load_pretrained_VoxNet_params(agent, freeze_weights, image_keys=("pointcloud
             ckpt["voxnet/conv2/batch_normalization/gamma:0"])
 
     agent = agent.replace(state=agent.state.replace(params=new_params))
+    print(f"Loaded pretrained VoxNet params, frozen weights: {freeze_weights}")
     return agent
 
 

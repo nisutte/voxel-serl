@@ -701,7 +701,7 @@ class UR5Env(gym.Env):
             "gripper_state": self.gripper_state,
             "tcp_force": self.curr_force,
             "tcp_torque": self.curr_torque,
-            "action": action,
+            "action": action.copy(),
             "time_diff": self.curr_timestamp_diff
         }
 

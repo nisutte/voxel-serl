@@ -7,7 +7,7 @@
   <img src="./docs/images/box_front.jpg" height="250pt" style="margin-right: 20pt"/>
   <img src="./docs/images/Voxel_grid_example_slim.png" height="180pt"/>
 </p>
-
+  
 Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl] implementation)  implementation by incorporating additional modalities into the reinforcement learning pipeline. It utilizes 3D spatial perception to improve the robustness of real-world vacuum gripping.$
 
 ## Handover TODO's
@@ -31,8 +31,12 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
 - [x] Do propper normalization (over rlds dataset)
 - [x] remodel to immediate reward (on the chosen actions)
 - [x] make it impossible to drop the box, not just huge reward (policy is dumb)
-- [ ] make RLDS save the pointclouds as well, such that i can post-train the VoxNet with the data captured
-- [ ] make a data consistency checker for the replay buffer!
+- [x] make RLDS save the pointclouds as well, such that i can post-train the VoxNet with the data captured
+- [x] make a data consistency checker for the replay buffer!
+- [x] clean up relative env mess (once again, sigh...)
+- [ ] make training more stable and add more useful obs
+- [ ] train only on pc data, like in the picking task
+- [ ] Make a simple uv setup for future usage (from requirements, and also add external JAX links, tough...)
 - [ ] Add pose estimation to automate the pickup
 - [ ] examine ensemble sizes and subsampling
 - [ ] make position augmentation for pose data (also rotation)

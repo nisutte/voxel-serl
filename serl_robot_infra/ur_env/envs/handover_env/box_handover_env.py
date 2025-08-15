@@ -235,10 +235,9 @@ class UR5HandoverEnv(DualUR5Env):
         rel_rot_y = R.from_matrix(T_l2r[:3, :3]).as_euler("zyz")  # Y should be pi
         relative_orientation_cost = 2. * max(0., (1. - allowed_rot_degrees / 180.) * np.pi - float(rel_rot_y[1]))
 
-        max_force_penalty = 0.3 * calculate_force_penalty(obs, max_force=10)
+        max_force_penalty = 0.4 * calculate_force_penalty(obs, max_force=10)
         retreat_reward = 0.5 * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
         both_gripping = state["left/gripper_state"][1] > 0.5 and state["right/gripper_state"][1] > 0.5
-        
         early_retreat_penalty = 1.0 * (action[1] + action[7 + 1]) if both_gripping else 0.
         both_gripping_huge_action_penalty = 0.5 * (np.sum(np.power(action[:6], 2)) + np.sum(np.power(action[7:13], 2))) if both_gripping else 0.
 
@@ -268,7 +267,8 @@ class UR5HandoverEnv(DualUR5Env):
                 - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty
         else:
             return (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - orientation_cost \
-                    - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty)
+                    - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward - early_retreat_penalty - \
+                    both_gripping_huge_action_penalty)
 
     def reached_goal_state(self, obs, **kwargs) -> bool:
         state = obs["state"]
