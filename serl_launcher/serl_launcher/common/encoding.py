@@ -27,9 +27,6 @@ def create_state_mask(mask_str: str) -> jnp.ndarray:
     assert mask_str in masks
     return masks[mask_str]
 
-def create_dual_state_mask(mask_str: str) -> jnp.ndarray:
-    return jnp.ones((80,), dtype=jnp.bool)      # TODO make, but is complicated...
-
 class EncodingWrapper(nn.Module):
     """
     Encodes observations into a single flat encoding, adding additional
@@ -73,7 +70,7 @@ class EncodingWrapper(nn.Module):
             return state
 
         encoded = []
-        for image_key in self.image_keys:
+        for image_key in self.image_keys:       # TODO: make this more efficient by stacking all images at once
             image = observations[image_key]
             if not is_encoded:
                 if self.enable_stacking:

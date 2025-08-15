@@ -31,6 +31,8 @@ class MLP(nn.Module):
                 x = activations(x)
         return x
 
+        # TODO test out modern MLP architecture (dense, act, dropout, LN) or post-2019 (LN, dense, act, dropout)
+
 
 class MLPResNetBlock(nn.Module):
     features: int

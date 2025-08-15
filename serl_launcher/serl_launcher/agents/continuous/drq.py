@@ -10,7 +10,7 @@ from flax.core import frozen_dict
 
 from serl_launcher.agents.continuous.sac import SACAgent
 from serl_launcher.common.common import JaxRLTrainState, ModuleDict, nonpytree_field
-from serl_launcher.common.encoding import EncodingWrapper, create_state_mask, create_dual_state_mask
+from serl_launcher.common.encoding import EncodingWrapper, create_state_mask
 from serl_launcher.common.optimizers import make_optimizer
 from serl_launcher.common.typing import Batch, Data, Params, PRNGKey
 from serl_launcher.networks.actor_critic_nets import Critic, Policy, ensemblize
