@@ -2,7 +2,7 @@ export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
 export XLA_PYTHON_CLIENT_MEM_FRACTION=.1 && \
 python /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@" \
     --actor \
-    --exp_name="Handover V8" \
+    --exp_name="Handover V9" \
     --camera_mode pointcloud \
     --max_traj_length 100 \
     --seed 42 \
@@ -14,6 +14,4 @@ python /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@
     --encoder_type voxnet-pretrained \
     --state_mask all \
     --encoder_bottleneck_dim 64 \
-    --encoder_kwargs fix_pretrained_gradient \
-    --encoder_kwargs False \
-    --debug
+#    --debug
