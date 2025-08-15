@@ -302,13 +302,11 @@ class DrQAgent(SACAgent):
         }
 
         # Define networks
-        critic_backbone = partial(MLP, **critic_network_kwargs)
-        critic_backbone = ensemblize(critic_backbone, critic_ensemble_size)(
-            name="critic_ensemble"
+        # Ensemblize the full critic so each member has its own head (Dense(1))
+        critic_cls = partial(
+            Critic, encoder=encoders["critic"], network=MLP(**critic_network_kwargs)
         )
-        critic_def = partial(
-            Critic, encoder=encoders["critic"], network=critic_backbone
-        )(name="critic")
+        critic_def = ensemblize(critic_cls, critic_ensemble_size)(name="critic")
 
         policy_def = Policy(
             encoder=encoders["actor"],
