@@ -503,8 +503,8 @@ class UR5Env(gym.Env):
 
         obs = self._get_obs(np.zeros_like(self.last_action))
 
-        current_force6 = np.concatenate((self.curr_force, self.curr_torque)).astype(np.float32)
-        self.ema_force[:] = current_force6
+        current_force = np.concatenate((self.curr_force, self.curr_torque)).astype(np.float32)
+        self.ema_force[:] = current_force
         self.ema_tcp_vel[:] = self.curr_vel
         obs["state"]["ema_force"] = self.ema_force.copy()
         obs["state"]["ema_tcp_vel"] = self.ema_tcp_vel.copy()
