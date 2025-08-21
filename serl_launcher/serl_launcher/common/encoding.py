@@ -40,7 +40,7 @@ class EncodingWrapper(nn.Module):
     encoder: nn.Module
     use_proprio: bool
     state_mask: jnp.ndarray
-    # proprio_latent_dim: int = 64
+    proprio_latent_dim: int = 64
     enable_stacking: bool = False
     image_keys: Iterable[str] = ("image",)
 
@@ -101,13 +101,12 @@ class EncodingWrapper(nn.Module):
                         encoded = encoded.reshape(-1)
                     if len(state.shape) == 3:
                         state = rearrange(state, "B T C -> B (T C)")
-                # state = nn.Dense(
-                #     self.proprio_latent_dim, kernel_init=nn.initializers.xavier_uniform()
-                # )(state)
-                # state = nn.LayerNorm()(state)
-                # state = nn.tanh(state)
+                state = nn.Dense(
+                    self.proprio_latent_dim, kernel_init=nn.initializers.xavier_uniform()
+                )(state)
+                state = nn.LayerNorm()(state)
+                state = nn.relu(state)
                 encoded = jnp.concatenate([encoded, state], axis=-1)
-
         return encoded
 
 

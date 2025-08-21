@@ -268,7 +268,7 @@ class DrQAgent(SACAgent):
             voxnet = VoxNet(
                     bottleneck_dim=encoder_kwargs["bottleneck_dim"],
                     use_conv_bias=True,
-                    final_activation=nn.tanh,
+                    final_activation=nn.relu,
                     pretrained= "pretrained" in encoder_type,
                     use_color="color" in encoder_type,
                     fix_pretrained_gradient=encoder_kwargs.get("fix_pretrained_gradient", "pretrained" in encoder_type),
@@ -293,7 +293,7 @@ class DrQAgent(SACAgent):
             use_proprio=use_proprio,
             enable_stacking=True,
             image_keys=image_keys,
-            # proprio_latent_dim=proprio_latent_dim,
+            proprio_latent_dim=proprio_latent_dim,
             state_mask=state_mask_arr
         )
 
@@ -303,13 +303,13 @@ class DrQAgent(SACAgent):
         }
 
         # Define networks
-        critic_backbone = partial(MLP, **critic_network_kwargs)
-        critic_backbone = ensemblize(critic_backbone, critic_ensemble_size)(
-            name="critic_ensemble"
+        from serl_launcher.networks.actor_critic_nets import SharedEncoderCriticEnsemble
+        critic_def = SharedEncoderCriticEnsemble(
+            encoder=encoders["critic"],
+            network=MLP(**critic_network_kwargs),
+            ensemble_size=critic_ensemble_size,
+            name="critic",
         )
-        critic_def = partial(
-            Critic, encoder=encoders["critic"], network=critic_backbone
-        )(name="critic")
 
         policy_def = Policy(
             encoder=encoders["actor"],

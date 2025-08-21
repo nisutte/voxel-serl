@@ -52,7 +52,7 @@ class Critic(nn.Module):
     init_final: Optional[float] = None
 
     @nn.compact
-    @multiple_action_q_function
+    # @multiple_action_q_function # not needed and blocks true ensemble of critic
     def __call__(
         self, observations: jnp.ndarray, actions: jnp.ndarray, train: bool = False
     ) -> jnp.ndarray:
@@ -73,6 +73,22 @@ class Critic(nn.Module):
         else:
             value = nn.Dense(1, kernel_init=default_init())(outputs)
         return jnp.squeeze(value, -1)
+
+
+class SharedEncoderCriticEnsemble(nn.Module):
+    encoder: nn.Module
+    network: nn.Module
+    ensemble_size: int
+    init_final: Optional[float] = None
+
+    @nn.compact
+    def __call__(
+        self, observations: jnp.ndarray, actions: jnp.ndarray, train: bool = False
+    ) -> jnp.ndarray:
+        obs_enc = self.encoder(observations)
+        critic_core_cls = partial(Critic, encoder=None, network=self.network, init_final=self.init_final)
+        critic_ensemble = ensemblize(critic_core_cls, self.ensemble_size)(name="critic_ensemble")
+        return critic_ensemble(obs_enc, actions, train)
 
 
 class DistributionalCritic(nn.Module):

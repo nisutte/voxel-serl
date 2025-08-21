@@ -467,13 +467,13 @@ class SACAgent(flax.struct.PyTreeNode):
             **policy_kwargs,
             name="actor",
         )
-        critic_backbone = partial(MLP, **critic_network_kwargs)
-        critic_backbone = ensemblize(critic_backbone, critic_ensemble_size)(
-            name="critic_ensemble"
+        from serl_launcher.networks.actor_critic_nets import SharedEncoderCriticEnsemble
+        critic_def = SharedEncoderCriticEnsemble(
+            encoder=encoders["critic"],
+            network=MLP(**critic_network_kwargs),
+            ensemble_size=critic_ensemble_size,
+            name="critic",
         )
-        critic_def = partial(
-            Critic, encoder=encoders["critic"], network=critic_backbone
-        )(name="critic")
         temperature_def = GeqLagrangeMultiplier(
             init_value=temperature_init,
             constraint_shape=(),

@@ -108,12 +108,11 @@ def make_drq_agent(
         sample_action,
         image_keys=("image",),
         encoder_type="small",
-        state_mask="no_ForceTorque",
-        # proprio_latent_dim=64,
+        state_mask="all",
         encoder_kwargs=None
 ):
     if encoder_kwargs is None:
-        encoder_kwargs = dict(bottleneck_dim=128)
+        encoder_kwargs = dict(bottleneck_dim=64)
 
     agent = DrQAgent.create_drq(
         jax.random.PRNGKey(seed),
@@ -122,7 +121,7 @@ def make_drq_agent(
         encoder_type=encoder_type,
         use_proprio=True,
         state_mask=state_mask,
-        # proprio_latent_dim=proprio_latent_dim,
+        proprio_latent_dim=128,
         image_keys=image_keys,
         policy_kwargs=dict(
             tanh_squash_distribution=True,
