@@ -148,7 +148,7 @@ def load_pretrained_VoxNet_params(agent, freeze_weights, image_keys=("pointcloud
         to_replace = {
             f"{prefix}conv_5x5x5": "voxnet/conv1/conv3d/",
             f"{prefix}conv_3x3x3": "voxnet/conv2/conv3d/",
-            f"{prefix}conv_2x2x2": "voxnet/conv3/conv3d/"        # TODO test if this is not set
+            f"conv_2x2x2": "voxnet/conv3/conv3d/"
         }
         replaced = []
         for key, weights in to_replace.items():
@@ -163,14 +163,14 @@ def load_pretrained_VoxNet_params(agent, freeze_weights, image_keys=("pointcloud
         print(f"replaced {replaced} in {image_key}")
 
         # replace LayerNorm params with pretrained BN ones
-        new_encoder_params[f"{prefix}LayerNorm_0"]["bias"] = new_encoder_params[f"{prefix}LayerNorm_0"]["bias"].at[:].set(
+        new_encoder_params[f"LayerNorm_0"]["bias"] = new_encoder_params[f"LayerNorm_0"]["bias"].at[:].set(
             ckpt["voxnet/conv1/batch_normalization/beta:0"])
-        new_encoder_params[f"{prefix}LayerNorm_0"]["scale"] = new_encoder_params[f"{prefix}LayerNorm_0"]["scale"].at[:].set(
+        new_encoder_params[f"LayerNorm_0"]["scale"] = new_encoder_params[f"LayerNorm_0"]["scale"].at[:].set(
             ckpt["voxnet/conv1/batch_normalization/gamma:0"])
 
-        new_encoder_params[f"{prefix}LayerNorm_1"]["bias"] = new_encoder_params[f"{prefix}LayerNorm_1"]["bias"].at[:].set(
+        new_encoder_params[f"LayerNorm_1"]["bias"] = new_encoder_params[f"LayerNorm_1"]["bias"].at[:].set(
             ckpt["voxnet/conv2/batch_normalization/beta:0"])
-        new_encoder_params[f"{prefix}LayerNorm_1"]["scale"] = new_encoder_params[f"{prefix}LayerNorm_1"]["scale"].at[:].set(
+        new_encoder_params[f"LayerNorm_1"]["scale"] = new_encoder_params[f"LayerNorm_1"]["scale"].at[:].set(
             ckpt["voxnet/conv2/batch_normalization/gamma:0"])
 
     agent = agent.replace(state=agent.state.replace(params=new_params))

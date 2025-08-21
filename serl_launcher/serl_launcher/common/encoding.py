@@ -104,8 +104,8 @@ class EncodingWrapper(nn.Module):
                 state = nn.Dense(
                     self.proprio_latent_dim, kernel_init=nn.initializers.xavier_uniform()
                 )(state)
-                state = nn.LayerNorm()(state)
                 state = nn.relu(state)
+                state = nn.LayerNorm()(state)
                 encoded = jnp.concatenate([encoded, state], axis=-1)
         return encoded
 

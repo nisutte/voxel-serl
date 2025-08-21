@@ -136,7 +136,7 @@ class VoxNet(nn.Module):
             strides=(2, 2, 2),
             name=f"{'frozen_' if self.pretrained else ''}conv_5x5x5",
         )(x)
-        x = nn.LayerNorm(name=f"{'frozen_' if self.pretrained else ''}LayerNorm_0")(x)
+        x = nn.LayerNorm()(x)
         x = l_relu(x)  # shape (B, (X-3)/2, (Y-3)/2, (Z-3)/2, F)
 
         x = conv3d(
@@ -147,7 +147,7 @@ class VoxNet(nn.Module):
         )(x)
         x = max_pool(x)
 
-        x = nn.LayerNorm(name=f"{'frozen_' if self.pretrained else ''}LayerNorm_1")(x)
+        x = nn.LayerNorm()(x)
         x = l_relu(x)  # shape (B, (X-4)/2, (Y-4)/2, (Z-4)/2, F)
 
         if self.fix_pretrained_gradient:
@@ -168,7 +168,7 @@ class VoxNet(nn.Module):
         x = jnp.reshape(x, (1 if no_batch_dim else x.shape[0], -1))
         if self.bottleneck_dim is not None:
             x = nn.Dense(self.bottleneck_dim)(x)
-            x = nn.LayerNorm()(x)
             x = self.final_activation(x)
+            x = nn.LayerNorm()(x)
 
         return x[0] if no_batch_dim else x

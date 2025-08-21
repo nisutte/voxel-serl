@@ -450,7 +450,6 @@ def learner(rng, agent: DrQAgent, replay_buffer, wandb_logger=None):
                 break
 
     server.stop()
-    parameter_overview(agent)  # print end state
 
 
 ##############################################################################
@@ -599,6 +598,7 @@ def main(_):
         except KeyboardInterrupt:
             print_green("leraner loop interrupted")
         finally:
+            parameter_overview(agent)  # print end state
             if hasattr(replay_buffer, "close_logger"):
                 replay_buffer.close_logger()
             print_green("Saved replay buffer")
