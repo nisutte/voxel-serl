@@ -202,51 +202,53 @@ class Policy(nn.Module):
         else:
             obs_enc = self.encoder(observations, train=train, stop_gradient=True)
 
-            # output the encoded obs, returning is not possible due to jax (on gpu)
-            # for i in range(obs_enc.shape[0]):
-            #     jax.debug.print("{}\n\n", obs_enc[i, ...])
-
         outputs = self.network(obs_enc, train=train)
 
         means = nn.Dense(self.action_dim, kernel_init=default_init())(outputs)
         if self.fixed_std is None:
             if self.std_parameterization == "exp":
-                log_stds = nn.Dense(self.action_dim, kernel_init=default_init())(
-                    outputs
-                )
+                log_stds = nn.Dense(self.action_dim, kernel_init=default_init())(outputs)
                 stds = jnp.exp(log_stds)
+
             elif self.std_parameterization == "softplus":
                 stds = nn.Dense(self.action_dim, kernel_init=default_init())(outputs)
                 stds = nn.softplus(stds)
+
             elif self.std_parameterization == "uniform":
                 log_stds = self.param(
                     "log_stds", nn.initializers.zeros, (self.action_dim,)
                 )
                 stds = jnp.exp(log_stds)
+
+            elif self.std_parameterization == "tanh":
+                # Smoothly bounded log_std for SAC
+                log_stds_unscaled = nn.Dense(self.action_dim, kernel_init=default_init())(outputs)
+                log_stds = jnp.tanh(log_stds_unscaled)
+                log_std_min, log_std_max = -20.0, 2.0  # standard SAC bounds
+                log_stds = log_std_min + 0.5 * (log_stds + 1.0) * (log_std_max - log_std_min)
+                stds = jnp.exp(log_stds)
+
             else:
-                raise ValueError(
-                    f"Invalid std_parameterization: {self.std_parameterization}"
-                )
+                raise ValueError(f"Invalid std_parameterization: {self.std_parameterization}")
+
         else:
             assert self.std_parameterization == "fixed"
             stds = jnp.array(self.fixed_std)
 
-        # Clip stds to avoid numerical instability
-        # For a normal distribution under MaxEnt, optimal std scales with sqrt(temperature)
-        stds = jnp.clip(stds, self.std_min, self.std_max) * jnp.sqrt(temperature)
+        # Clip only for parameterizations that need it
+        if self.std_parameterization in ["exp", "softplus", "uniform"]:
+            stds = jnp.clip(stds, self.std_min, self.std_max)
+
+        # Scale by sqrt(temperature) as in MaxEnt RL
+        stds = stds * jnp.sqrt(temperature)
 
         if self.tanh_squash_distribution:
-            distribution = TanhMultivariateNormalDiag(
-                loc=means,
-                scale_diag=stds,
-            )
+            distribution = TanhMultivariateNormalDiag(loc=means, scale_diag=stds)
         else:
-            distribution = distrax.MultivariateNormalDiag(
-                loc=means,
-                scale_diag=stds,
-            )
+            distribution = distrax.MultivariateNormalDiag(loc=means, scale_diag=stds)
 
         return distribution
+
 
 
 class TanhMultivariateNormalDiag(distrax.Transformed):
