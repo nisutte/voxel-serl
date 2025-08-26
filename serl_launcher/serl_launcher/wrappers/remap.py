@@ -1,6 +1,6 @@
 from typing import Any
 
-import gym
+import gymnasium as gym
 import gym.spaces
 import jax
 

@@ -1,5 +1,5 @@
 from scipy.spatial.transform import Rotation as R
-import gym
+import gymnasium as gym
 import numpy as np
 from gym import Env
 from franka_env.utils.transformations import (

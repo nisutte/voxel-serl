@@ -2,7 +2,7 @@ import math
 from collections import defaultdict
 from typing import Dict
 
-import gym
+import gymnasium as gym
 import jax
 import numpy as np
 

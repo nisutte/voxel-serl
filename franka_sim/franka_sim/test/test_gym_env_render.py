@@ -1,6 +1,6 @@
 import time
 
-import gym
+import gymnasium as gym
 import mujoco
 import mujoco.viewer
 import numpy as np

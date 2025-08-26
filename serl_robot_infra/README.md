@@ -87,7 +87,7 @@ Lastly, we use a gym env interface to interact with the robot server, defined in
 
 Example Usage
 ```py
-import gym
+import gymnasium as gym
 import franka_env
 env = gym.make("FrankaEnv-Vision-v0")
 ```

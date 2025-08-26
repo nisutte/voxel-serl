@@ -3,7 +3,7 @@
 import time
 from functools import partial
 
-import gym
+import gymnasium as gym
 import jax
 import jax.numpy as jnp
 import numpy as np

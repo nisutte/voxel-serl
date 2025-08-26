@@ -6,7 +6,7 @@ import flax.linen as nn
 from flax.training import checkpoints
 import optax
 from tqdm import tqdm
-import gym
+import gymnasium as gym
 import os
 from absl import app, flags
 

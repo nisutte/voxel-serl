@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 from tqdm import tqdm
 import numpy as np
 import franka_env

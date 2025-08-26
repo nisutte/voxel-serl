@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 from gym.core import Env
 from copy import deepcopy
 

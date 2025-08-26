@@ -5,7 +5,7 @@ import queue
 import copy
 import time
 
-import gym
+import gymnasium as gym
 import jax
 from serl_launcher.data.replay_buffer import ReplayBuffer
 from serl_launcher.data.memory_efficient_replay_buffer import (

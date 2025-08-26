@@ -1,6 +1,6 @@
 import time
 from gym import Env, spaces
-import gym
+import gymnasium as gym
 import numpy as np
 from gym.spaces import Box
 import copy

@@ -13,7 +13,7 @@ import os
 
 from typing import Any, Dict, Optional
 import pickle as pkl
-import gym
+import gymnasium as gym
 from gym.wrappers.record_episode_statistics import RecordEpisodeStatistics
 
 from serl_launcher.agents.continuous.drq import DrQAgent

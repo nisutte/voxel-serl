@@ -12,7 +12,7 @@ from absl import app, flags
 from flax.training import checkpoints
 import threading
 
-import gym
+import gymnasium as gym
 from gym.wrappers.record_episode_statistics import RecordEpisodeStatistics
 
 from serl_launcher.agents.continuous.drq import DrQAgent
