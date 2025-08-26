@@ -310,8 +310,7 @@ class UR5Handover90Degrees(UR5HandoverEnv):
         suction_cost = 2. * (float(state["left/gripper_state"][1] < -0.5) and action[6 + 7 * self.inverted] > -0.5)
         suction_cost += 2. * (float(state["right/gripper_state"][1] < -0.5) and action[6 + 7 * (not self.inverted)] > -0.5)
 
-        relative_position_cost = 10 * np.linalg.norm(state["l2r/tcp_pose"][:3]) if not self.goal_state_increment else 0.
-        print(f"relative_position_cost: {relative_position_cost}")
+        relative_position_cost = 5 * max(0.0, -0.05 + np.linalg.norm(state["l2r/tcp_pose"][:3])) if not self.goal_state_increment else 0.
 
         allowed_rot_degrees = 20.
         T_l2r = pose_to_T(state["l2r/tcp_pose"])
