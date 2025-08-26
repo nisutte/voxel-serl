@@ -41,6 +41,7 @@ from serl_launcher.wrappers.observation_statistics_wrapper import ObservationSta
 from ur_env.envs import UR5Env
 from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualNormalizationWrapper
 from ur_env.envs.handover_env import UR5DualCameraConfigLeft, UR5DualCameraConfigRight, UR5DualCameraConfig90DegreesLeft, UR5DualCameraConfig90DegreesRight
+from ur_env.envs.handover_env.box_handover_env import UR5Handover90Degrees, UR5HandoverEnv
 from ur_env.envs.plot_wrapper import PlotWrapper
 from ur_env.envs.relative_env import DualRelativeFrame
 

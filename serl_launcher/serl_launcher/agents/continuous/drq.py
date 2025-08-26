@@ -293,7 +293,7 @@ class DrQAgent(SACAgent):
             use_proprio=use_proprio,
             enable_stacking=True,
             image_keys=image_keys,
-            proprio_latent_dim=proprio_latent_dim,
+            proprio_latent_dim=proprio_latent_dim,  # ignored
             state_mask=state_mask_arr
         )
 

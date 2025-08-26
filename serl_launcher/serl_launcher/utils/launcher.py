@@ -121,7 +121,7 @@ def make_drq_agent(
         encoder_type=encoder_type,
         use_proprio=True,
         state_mask=state_mask,
-        proprio_latent_dim=128,
+        # proprio_latent_dim=128,
         image_keys=image_keys,
         policy_kwargs=dict(
             tanh_squash_distribution=True,
@@ -144,8 +144,8 @@ def make_drq_agent(
         temperature_init=1e-1,  # was 1e-3
         discount=0.99,  # 0.99
         backup_entropy=True,  # default: False
-        critic_ensemble_size=5,         # changed from 10 to 5
-        critic_subsample_size=2,
+        critic_ensemble_size=2,         # changed from 10 to 5
+        critic_subsample_size=None,
         encoder_kwargs=encoder_kwargs,
         # dict(
         #     # pooling_method="spatial_softmax",        # default "spatial_learned_embeddings"
