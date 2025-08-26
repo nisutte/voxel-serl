@@ -1,7 +1,73 @@
 [project]
 name = "serl"
 version = "0.1.0"
-description = "Add your description here"
+description = "Voxel Serl project dependencies"
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = []
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "numpy==1.26.4",
+    "pandas==2.2.2",
+    "scipy==1.12.0",
+    "scikit-learn==1.5.0",
+    "transformers==4.41.2",
+    "huggingface-hub==0.24.2",
+    "datasets==2.12.0",
+    "jax[cuda12]==0.4.25",
+    "jaxlib==0.4.25",
+    "flax==0.8.0",
+    "optax==0.1.5",
+    "tqdm==4.66.2",
+    "matplotlib==3.8.0",
+    "gymnasium==0.28.1",
+    "openai==1.86.0",
+    "wandb==0.16.4",
+    "pynput>=1.8.1",
+    "tensorflow==2.16.1",
+    "tensorflow-probability==0.24.0",
+    "tensorflow-datasets==4.9.4",
+    "tf_keras==2.16.0",
+    "keras==3.1.0",
+    "imageio==2.34.0",
+    "einops==0.7.0",
+    "distrax==0.1.2",
+    "opencv-python==4.7.*",
+    "open3d==0.18.0",
+    "pyrealsense2==2.54.2.5684",
+    "ur-rtde==1.5.7",
+    "pyzmq==26.4.0",
+    "gymnasium==0.28.1",
+    "agentlace==1.2",
+    "ml-collections==0.1.1",
+    "robotic==0.3.1",
+    "oxe-envlogger",
+    "clu==0.0.12",
+    "orbax-checkpoint==0.4.4",
+]
+
+[tool.uv]
+dev-dependencies = []
+
+[tool.uv.sources]
+agentlace = { git = "https://github.com/youliangtan/agentlace.git", rev = "main" }
+oxe-envlogger = { git = "https://github.com/rail-berkeley/oxe_envlogger", rev = "main" }
+
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = [
+    "serl_launcher",
+    "serl_robot_infra",
+    "ur_env",
+    "franka_env",
+    "robot_controllers",
+]
+
+[tool.setuptools.package-dir]
+serl_launcher = "serl_launcher/serl_launcher"
+serl_robot_infra = "serl_robot_infra"
+ur_env = "serl_robot_infra/ur_env"
+robot_controllers = "serl_robot_infra/robot_controllers"
+franka_env = "serl_robot_infra/franka_env"
