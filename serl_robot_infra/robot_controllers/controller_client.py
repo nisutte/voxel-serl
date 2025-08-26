@@ -128,7 +128,8 @@ class ControllerClientWithGripper(threading.Thread):
         self.controller.send_reset_joint_angles(self.reset_angles)
 
         # wait for the controller to finish
-        while np.linalg.norm(np.asarray(self.get_state()["Q"]) - self.reset_angles, 2) > 0.001:
+        time.sleep(0.5)
+        while np.linalg.norm(np.asarray(self.get_state()["Qd"])) > 0.01:
             time.sleep(1./self.frequency)
         self._is_truncated.clear()
         self._reset.clear()
