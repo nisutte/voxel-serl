@@ -10,8 +10,9 @@ class DualToMrpWrapper(gym.ObservationWrapper):
     """
     Convert the quaternion representation of the tcp pose to mrp angles
     """
-import ur_env
+
     def __init__(self, dual_env: Env, transform_obs=True):
+        import ur_env
         super().__init__(dual_env)
         self.transform_obs = transform_obs
         # from xyz + quat to xyz + mrp
