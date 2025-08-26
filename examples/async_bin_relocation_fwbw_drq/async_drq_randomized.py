@@ -12,7 +12,7 @@ from copy import deepcopy
 from collections import OrderedDict
 
 import gymnasium as gym
-from gym.wrappers.record_episode_statistics import RecordEpisodeStatistics
+from gymnasium.wrappers.record_episode_statistics import RecordEpisodeStatistics
 
 from serl_launcher.agents.continuous.drq import DrQAgent
 from serl_launcher.common.evaluation import evaluate

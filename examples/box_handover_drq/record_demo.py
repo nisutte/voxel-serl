@@ -18,10 +18,10 @@ from ur_env.envs.relative_env import DualRelativeFrame
 from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper
 from serl_launcher.wrappers.chunking import ChunkingWrapper
 
-from serl_robot_infra.ur_env.envs.handover_env import UR5DualCameraConfigRight, UR5DualCameraConfigLeft
-
-import ur_env
+from ur_env.envs.handover_env import UR5DualCameraConfigLeft, UR5DualCameraConfigRight, UR5DualCameraConfig90DegreesLeft, UR5DualCameraConfig90DegreesRight
 from ur_env.envs.wrappers import DualSpaceMouseIntervention
+import ur_env
+
 
 exit_program = threading.Event()
 
@@ -70,16 +70,17 @@ if __name__ == "__main__":
     camera_mode = "pointcloud"
     use_90_degrees = True
 
+    config_left = UR5DualCameraConfigLeft if not use_90_degrees else UR5DualCameraConfig90DegreesLeft
+    config_right = UR5DualCameraConfigRight if not use_90_degrees else UR5DualCameraConfig90DegreesRight
     left_env = UR5Env(
         fake_env = fake_env,
-        config = UR5DualCameraConfigLeft,
+        config = config_left,
         camera_mode=camera_mode,
         visualize_camera_mode=False,
     )
-
     right_env = UR5Env(
         fake_env = fake_env,
-        config = UR5DualCameraConfigRight,
+        config = config_right,
         camera_mode=camera_mode,
         visualize_camera_mode=False,
     )

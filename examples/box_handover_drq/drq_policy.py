@@ -40,8 +40,7 @@ from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper
 from serl_launcher.wrappers.observation_statistics_wrapper import ObservationStatisticsWrapper
 from ur_env.envs import UR5Env
 from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualNormalizationWrapper
-from ur_env.envs.handover_env import UR5DualCameraConfigLeft, UR5DualCameraConfigRight
-from ur_env.envs.handover_env.box_handover_env import UR5Handover90Degrees, UR5HandoverEnv
+from ur_env.envs.handover_env import UR5DualCameraConfigLeft, UR5DualCameraConfigRight, UR5DualCameraConfig90DegreesLeft, UR5DualCameraConfig90DegreesRight
 from ur_env.envs.plot_wrapper import PlotWrapper
 from ur_env.envs.relative_env import DualRelativeFrame
 
@@ -464,17 +463,18 @@ def main(_):
 
     # seed
     rng = jax.random.PRNGKey(FLAGS.seed)
-
+    
+    config_left = UR5DualCameraConfigLeft if not FLAGS.activate_90_degrees else UR5DualCameraConfig90DegreesLeft
+    config_right = UR5DualCameraConfigRight if not FLAGS.activate_90_degrees else UR5DualCameraConfig90DegreesRight
     left_env = UR5Env(
         fake_env=FLAGS.learner,
-        config=UR5DualCameraConfigLeft,
+        config=config_left,
         camera_mode=FLAGS.camera_mode,
         visualize_camera_mode=False,
     )
-
     right_env = UR5Env(
         fake_env=FLAGS.learner,
-        config=UR5DualCameraConfigRight,
+        config=config_right,
         camera_mode=FLAGS.camera_mode,
         visualize_camera_mode=False,
     )

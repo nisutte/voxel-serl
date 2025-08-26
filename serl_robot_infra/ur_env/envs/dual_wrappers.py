@@ -1,7 +1,7 @@
 import gymnasium as gym
 import numpy as np
 
-from gym import Env
+from gymnasium import Env
 
 from ur_env.utils.rotations import quat_2_mrp, omega_to_mrp_dot
 
@@ -10,6 +10,7 @@ class DualToMrpWrapper(gym.ObservationWrapper):
     """
     Convert the quaternion representation of the tcp pose to mrp angles
     """
+import ur_env
     def __init__(self, dual_env: Env, transform_obs=True):
         super().__init__(dual_env)
         self.transform_obs = transform_obs

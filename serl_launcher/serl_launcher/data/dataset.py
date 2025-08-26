@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from flax.core import frozen_dict
-from gym.utils import seeding
+from gymnasium.utils import seeding
 
 DataType = Union[np.ndarray, Dict[str, "DataType"]]
 DatasetDict = Dict[str, DataType]

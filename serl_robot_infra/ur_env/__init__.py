@@ -1,9 +1,8 @@
 from gymnasium.envs.registration import register
-import numpy as np
 
 register(
     id="box_picking_basic_env",
-    entry_point="ur_env.envs.basic_env:UR5BasicEnv",
+    entry_point="ur_env.envs.basic_env:BoxPickingBasicEnv",
     max_episode_steps=200,
 )
 

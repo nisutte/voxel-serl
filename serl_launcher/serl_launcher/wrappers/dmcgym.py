@@ -8,7 +8,7 @@ from typing import OrderedDict
 import dm_env
 import gymnasium as gym
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 
 
 def filter_info(obs):
@@ -74,7 +74,7 @@ class DMCGYM(gym.core.Env):
 
     def _get_viewer(self):
         if self.viewer is None:
-            from gym.envs.mujoco.mujoco_rendering import Viewer
+            from gymnasium.envs.mujoco.mujoco_rendering import Viewer
 
             self.viewer = Viewer(
                 self._env.physics.model.ptr, self._env.physics.data.ptr
