@@ -40,6 +40,7 @@ dependencies = [
     "transformers==4.41.2",
     "ur-rtde==1.5.7",
     "wandb==0.16.4",
+    "pyspacemouse>=1.1.4",
 ]
 
 [tool.uv]

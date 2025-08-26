@@ -134,8 +134,8 @@ name = "array-record"
 version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "absl-py" },
-    { name = "etils", extra = ["epath"] },
+    { name = "absl-py", marker = "sys_platform == 'linux'" },
+    { name = "etils", extra = ["epath"], marker = "sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/1d/25333484f9c7fc92dcfce8ca77f2b5d9a57b2678200ffc391685d3aee3fa/array_record-0.8.1-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:39a69d8b8259bce043a8218f2defd46eb44cba0c2f60b7254fd1daaf26e0ea67", size = 2406222, upload-time = "2025-08-21T19:06:16.015Z" },
@@ -494,6 +494,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/b2/9d/c3b43da9515bd270d
 wheels = [
     { url = "https://files.pythonhosted.org/packages/55/e2/2537ebcff11c1ee1ff17d8d0b6f4db75873e3b0fb32c2d4a2ee31ecb310a/docstring_parser-0.17.0-py3-none-any.whl", hash = "sha256:cf2569abd23dce8099b300f9b4fa8191e9582dda731fd533daf54c4551658708", size = 36896, upload-time = "2025-07-21T07:35:00.684Z" },
 ]
+
+[[package]]
+name = "easyhid"
+version = "0.0.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cffi" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/52/ec/8bafbd3cd967acda78a108793fe0b7a6afb0678e7a2496a83d8c6fb065f2/easyhid-0.0.10.tar.gz", hash = "sha256:95a05dcc0288832760745b83445e4a7c7ba64587baff1380b63e984d9b66c609", size = 5002, upload-time = "2019-05-20T13:19:50.198Z" }
 
 [[package]]
 name = "einops"
@@ -1912,10 +1921,10 @@ name = "pyobjc-framework-applicationservices"
 version = "11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core", marker = "sys_platform != 'linux'" },
-    { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'linux'" },
-    { name = "pyobjc-framework-coretext", marker = "sys_platform != 'linux'" },
-    { name = "pyobjc-framework-quartz", marker = "sys_platform != 'linux'" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-coretext", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-quartz", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/3f/b33ce0cecc3a42f6c289dcbf9ff698b0d9e85f5796db2e9cb5dadccffbb9/pyobjc_framework_applicationservices-11.1.tar.gz", hash = "sha256:03fcd8c0c600db98fa8b85eb7b3bc31491701720c795e3f762b54e865138bbaf", size = 224842, upload-time = "2025-06-14T20:56:40.648Z" }
 wheels = [
@@ -1927,7 +1936,7 @@ name = "pyobjc-framework-cocoa"
 version = "11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core", marker = "sys_platform != 'linux'" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/4b/c5/7a866d24bc026f79239b74d05e2cf3088b03263da66d53d1b4cf5207f5ae/pyobjc_framework_cocoa-11.1.tar.gz", hash = "sha256:87df76b9b73e7ca699a828ff112564b59251bb9bbe72e610e670a4dc9940d038", size = 5565335, upload-time = "2025-06-14T20:56:59.683Z" }
 wheels = [
@@ -1939,9 +1948,9 @@ name = "pyobjc-framework-coretext"
 version = "11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core", marker = "sys_platform != 'linux'" },
-    { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'linux'" },
-    { name = "pyobjc-framework-quartz", marker = "sys_platform != 'linux'" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-quartz", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/65/e9/d3231c4f87d07b8525401fd6ad3c56607c9e512c5490f0a7a6abb13acab6/pyobjc_framework_coretext-11.1.tar.gz", hash = "sha256:a29bbd5d85c77f46a8ee81d381b847244c88a3a5a96ac22f509027ceceaffaf6", size = 274702, upload-time = "2025-06-14T20:57:16.059Z" }
 wheels = [
@@ -1953,8 +1962,8 @@ name = "pyobjc-framework-quartz"
 version = "11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core", marker = "sys_platform != 'linux'" },
-    { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'linux'" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c7/ac/6308fec6c9ffeda9942fef72724f4094c6df4933560f512e63eac37ebd30/pyobjc_framework_quartz-11.1.tar.gz", hash = "sha256:a57f35ccfc22ad48c87c5932818e583777ff7276605fef6afad0ac0741169f75", size = 3953275, upload-time = "2025-06-14T20:58:17.924Z" }
 wheels = [
@@ -1989,6 +1998,18 @@ source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/23/50/bda4d82d30e7823dff62b167bcd19af018fe741a94b5b5445857efb40d84/pyrealsense2-2.54.2.5684-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:c49ac2ca7550b896670bc94113e2e13c672cba6e5ca8aa646dcb3c8f9545a552", size = 13330757, upload-time = "2023-09-28T08:32:07.73Z" },
     { url = "https://files.pythonhosted.org/packages/4e/43/424e8bcf3c7b662056c7ae77b1d6d00c27c825d2aca37744ecb4775483e1/pyrealsense2-2.54.2.5684-cp310-cp310-win_amd64.whl", hash = "sha256:21ea9db6f80b425d6435dfc78add39620749107069a4d20d66a191df614f5622", size = 5613955, upload-time = "2023-09-28T08:32:12.497Z" },
+]
+
+[[package]]
+name = "pyspacemouse"
+version = "1.1.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "easyhid" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/84/ed/7ee8e7dcff16f0fa82723ca8c22171a409b231d0e1fefc5ede142c205b57/pyspacemouse-1.1.4.tar.gz", hash = "sha256:cb8733d6d0abf7c2c2673ae8b36bb67f8523ae3a04f749fd2caca8f429b07a6b", size = 19106, upload-time = "2024-08-26T20:52:28.061Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/ab/3584d754e0e76ac39c96f7569163cc5dede143d983b4556026cfc1b8b05b/pyspacemouse-1.1.4-py3-none-any.whl", hash = "sha256:67a974b28a1331e913a198d83ec968ac2298b8c5bc5387189a0fb53f256ed3b9", size = 14742, upload-time = "2024-08-26T20:52:26.522Z" },
 ]
 
 [[package]]
@@ -2307,6 +2328,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pynput" },
     { name = "pyrealsense2" },
+    { name = "pyspacemouse" },
     { name = "pyzmq" },
     { name = "robotic" },
     { name = "scikit-learn" },
@@ -2346,6 +2368,7 @@ requires-dist = [
     { name = "pandas", specifier = "==2.2.2" },
     { name = "pynput", specifier = ">=1.8.1" },
     { name = "pyrealsense2", specifier = "==2.54.2.5684" },
+    { name = "pyspacemouse", specifier = ">=1.1.4" },
     { name = "pyzmq", specifier = "==26.4.0" },
     { name = "robotic", specifier = "==0.3.1" },
     { name = "scikit-learn", specifier = "==1.5.0" },
