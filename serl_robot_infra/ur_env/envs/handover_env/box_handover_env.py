@@ -206,6 +206,7 @@ class UR5HandoverEnv(DualUR5Env):
 
         suction_reward = 0.3 * (float(state["left/gripper_state"][1] > 0.5) and action[6 + 7 * self.inverted] > 0.5)
         suction_cost = 2. * (float(state["left/gripper_state"][1] < -0.5) and action[6 + 7 * self.inverted] > -0.5)
+        suction_cost += 2. * (float(state["right/gripper_state"][1] < -0.5) and action[6 + 7 * (not self.inverted)] > -0.5)
 
         cutoff_dist = np.array([0.05, 0.3, 0.05])  # lessen y direction (forward)
         pos_diff_left = state["left/tcp_pose"][:3] - self.env_left.curr_reset_pose[:3]
@@ -217,6 +218,8 @@ class UR5HandoverEnv(DualUR5Env):
             np.where(np.abs(pos_diff_right) > cutoff_dist,
                      np.abs(pos_diff_right - np.sign(pos_diff_right) * cutoff_dist), 0.0))
         position_cost = position_cost_left + position_cost_right
+
+        # todo do relative position cost
 
         w = np.array([0.2, 0.2, 0.05])  # x, y start after 22°, z after 45°
         def orientation_cost_fun(curr_quat, target_quat):
@@ -289,3 +292,62 @@ class UR5HandoverEnv(DualUR5Env):
             self.env_left.send_gripper_command(np.array(-1))
             self.env_right.send_gripper_command(np.array(-1))
         super().close()
+
+
+class UR5Handover90Degrees(UR5HandoverEnv):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def compute_reward(self, obs, action) -> float:
+        state = obs["state"]
+
+        step_cost = 0.1
+        action_cost = 0.1 * np.sum(np.power(action, 2))
+        action_diff_cost = 0.3 * np.sum(np.power(action - self.last_action, 2))
+        self.last_action = action
+
+        suction_reward = 0.3 * (float(state["left/gripper_state"][1] > 0.5) and action[6 + 7 * self.inverted] > 0.5)
+        suction_cost = 2. * (float(state["left/gripper_state"][1] < -0.5) and action[6 + 7 * self.inverted] > -0.5)
+        suction_cost += 2. * (float(state["right/gripper_state"][1] < -0.5) and action[6 + 7 * (not self.inverted)] > -0.5)
+
+        relative_position_cost = 10 * np.linalg.norm(state["l2r/tcp_pose"][:3]) if not self.goal_state_increment else 0.
+        print(f"relative_position_cost: {relative_position_cost}")
+
+        allowed_rot_degrees = 20.
+        T_l2r = pose_to_T(state["l2r/tcp_pose"])
+        rel_rot_y = R.from_matrix(T_l2r[:3, :3]).as_euler("zyz")  # Y should be pi/2 for 90 degrees
+        relative_orientation_cost = 2. * max(0., abs(abs(rel_rot_y[1]) - np.pi / 2. ) - allowed_rot_degrees)
+
+        max_force_penalty = 0.4 * calculate_force_penalty(obs, max_force=10)
+        retreat_reward = 0.5 * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
+        both_gripping = state["left/gripper_state"][1] > 0.5 and state["right/gripper_state"][1] > 0.5
+        early_retreat_penalty = 1.0 * (action[1] + action[7 + 1]) if both_gripping else 0.
+        both_gripping_huge_action_penalty = 0.5 * (np.sum(np.power(action[:6], 2)) + np.sum(np.power(action[7:13], 2))) if both_gripping else 0.
+
+        cost_info = dict(
+            step_cost=step_cost,
+            action_cost=action_cost,
+            action_diff_cost=action_diff_cost,
+            suction_reward=suction_reward,
+            suction_cost=suction_cost,
+            relative_position_cost=relative_position_cost,
+            relative_orientation_cost=relative_orientation_cost,
+            max_force_penalty=max_force_penalty,
+            retreat_reward=retreat_reward,
+            early_retreat_penalty=early_retreat_penalty,
+            both_gripping_huge_action_penalty=both_gripping_huge_action_penalty,
+            total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost
+                 - relative_position_cost - relative_orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty)
+        )
+
+        for key, info in cost_info.items():
+            self.cost_infos[key] = info + (0. if key not in self.cost_infos else self.cost_infos[key])
+
+        if self.reached_goal_state(obs, increment=False):
+            self.last_action[:] = 0.
+            return 500. - action_cost - action_diff_cost - relative_position_cost - relative_orientation_cost - max_force_penalty \
+                - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty
+        else:
+            return (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - relative_position_cost \
+                    - relative_orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty - \
+                    both_gripping_huge_action_penalty)

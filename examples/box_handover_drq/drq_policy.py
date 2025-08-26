@@ -41,7 +41,7 @@ from serl_launcher.wrappers.observation_statistics_wrapper import ObservationSta
 from ur_env.envs import UR5Env
 from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualNormalizationWrapper
 from ur_env.envs.handover_env import UR5DualCameraConfigLeft, UR5DualCameraConfigRight
-from ur_env.envs.handover_env.box_handover_env import UR5HandoverEnv
+from ur_env.envs.handover_env.box_handover_env import UR5Handover90Degrees, UR5HandoverEnv
 from ur_env.envs.plot_wrapper import PlotWrapper
 from ur_env.envs.relative_env import DualRelativeFrame
 
@@ -91,6 +91,7 @@ flags.DEFINE_integer("eval_n_trajs", 10, "Number of trajectories for evaluation.
 # flag to indicate if this is a leaner or a actor
 flags.DEFINE_boolean("learner", False, "Is this a learner or a trainer.")
 flags.DEFINE_boolean("actor", False, "Is this a learner or a trainer.")
+flags.DEFINE_boolean("activate_90_degrees", False, "Activate 90 degrees mode.")
 flags.DEFINE_string("ip", "localhost", "IP address of the learner.")
 flags.DEFINE_string("demo_path", None, "Path to the demo data.")
 flags.DEFINE_integer("checkpoint_period", 0, "Period to save checkpoints.")
@@ -478,7 +479,8 @@ def main(_):
         visualize_camera_mode=False,
     )
 
-    env = UR5HandoverEnv(
+    handover_env = UR5HandoverEnv if not FLAGS.activate_90_degrees else UR5Handover90Degrees
+    env = handover_env(
         env_left=left_env,
         env_right=right_env,
         fake_env=FLAGS.learner,
@@ -570,7 +572,7 @@ def main(_):
             with open(FLAGS.demo_path, "rb") as f:
                 trajs = pkl.load(f)
 
-                # check which observations can be ignored for this run
+                # check which observations can be ignorsed for this run
                 to_pop = []
                 for obs_name in [i for i in trajs[0]["observations"].keys()]:
                     if obs_name not in env.observation_space.spaces:
@@ -598,7 +600,7 @@ def main(_):
         except KeyboardInterrupt:
             print_green("leraner loop interrupted")
         finally:
-            parameter_overview(agent)  # print end state
+            # parameter_overview(agent)  # print end state
             if hasattr(replay_buffer, "close_logger"):
                 replay_buffer.close_logger()
             print_green("Saved replay buffer")

@@ -11,7 +11,7 @@ from pprint import pprint
 
 from ur_env.envs.camera_env.box_picking_camera_env import UR5Env
 from ur_env.envs.dual_wrappers import DualToMrpWrapper, DualNormalizationWrapper
-from ur_env.envs.handover_env.box_handover_env import UR5HandoverEnv
+from ur_env.envs.handover_env.box_handover_env import UR5Handover90Degrees, UR5HandoverEnv
 from ur_env.envs.plot_wrapper import PlotWrapper
 from ur_env.envs.relative_env import DualRelativeFrame
 
@@ -68,6 +68,7 @@ def plot_poses(data):
 if __name__ == "__main__":
     fake_env = False
     camera_mode = "pointcloud"
+    use_90_degrees = True
 
     left_env = UR5Env(
         fake_env = fake_env,
@@ -83,7 +84,8 @@ if __name__ == "__main__":
         visualize_camera_mode=False,
     )
 
-    env = UR5HandoverEnv(
+    handover_env = UR5HandoverEnv if not use_90_degrees else UR5Handover90Degrees
+    env = handover_env(
         env_left=left_env,
         env_right=right_env,
     )
@@ -103,7 +105,7 @@ if __name__ == "__main__":
 
     transitions = []
     success_count = 0
-    success_needed = 5
+    success_needed = 10
     total_count = 0
     pbar = tqdm(total=success_needed)
 

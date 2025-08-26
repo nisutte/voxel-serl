@@ -268,8 +268,8 @@ class DrQAgent(SACAgent):
             voxnet = VoxNet(
                     bottleneck_dim=encoder_kwargs["bottleneck_dim"],
                     use_conv_bias=True,
-                    final_activation=nn.relu,
-                    pretrained= "pretrained" in encoder_type,
+                    final_activation=lambda x: nn.leaky_relu(x, negative_slope=0.1),
+                    pretrained="pretrained" in encoder_type,
                     use_color="color" in encoder_type,
                     fix_pretrained_gradient=encoder_kwargs.get("fix_pretrained_gradient", "pretrained" in encoder_type),
                 )

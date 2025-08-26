@@ -5,7 +5,7 @@ import numpy as np
 class UR5DualCameraConfigRight(DefaultEnvConfig):
     RESET_Q = np.array([[-1.771, -1.943, 2.005, -3.244, -1.597, -1.5412]])
     RANDOM_RESET = False
-    RANDOM_POSITION_RANGE = (0.05, 0.0, 0.05)
+    RANDOM_POSITION_RANGE = (0.05, 0.05, 0.05)
     RANDOM_ROT_RANGE = (0.03,)
     ABS_POSE_LIMIT_HIGH = np.array([0.1, 0.68, 0.75, 0.15, 0.2, 0.1])
     ABS_POSE_LIMIT_LOW = np.array([-0.1, 0.4, 0.55, -0.15, -0.2, -0.1])
@@ -50,6 +50,15 @@ class UR5DualCameraConfigLeft(UR5DualCameraConfigRight):
         }
     }
     CALIBRATION_PATH = "/home/nico/robot_ipc_control/configs/b2r_pose_left_adam.npy"
+
+
+class UR5DualCameraConfig90Degrees(UR5DualCameraConfigRight):
+    RESET_Q = np.array([[-1.8542, -1.7199, 1.4690, -2.1082, -1.6014, 0.0]])
+
+
+class UR5DualCameraConfig90DegreesLeft(UR5DualCameraConfigLeft):
+    RESET_Q = np.array([[-1.7322, -1.9437, 1.7611, -2.2971, -1.6246, -3.1415]])
+    
 
 
 def get_box_handover_state_noise_assignments(total_dim: int):
