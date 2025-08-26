@@ -1,1 +1,2 @@
 from ur_env.envs.handover_env.config import UR5DualCameraConfigRight, UR5DualCameraConfigLeft
+from ur_env.envs.handover_env.config import UR5DualCameraConfig90DegreesLeft, UR5DualCameraConfig90DegreesRight
