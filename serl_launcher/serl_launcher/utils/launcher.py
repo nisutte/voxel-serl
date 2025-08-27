@@ -132,17 +132,17 @@ def make_drq_agent(
         critic_network_kwargs=dict(
             activations=nn.leaky_relu,
             use_layer_norm=True,
-            hidden_dims=[256, 128],
+            hidden_dims=[256, 256],
             dropout_rate=0.0  # was 0.1
         ),
         policy_network_kwargs=dict(
             activations=nn.leaky_relu,
             use_layer_norm=True,
-            hidden_dims=[256, 128],
+            hidden_dims=[256, 256],
             dropout_rate=0.0
         ),
-        temperature_init=1e-1,  # was 1e-3
-        discount=0.995,  # 0.99
+        temperature_init=1e-3,  # was 1e-3
+        discount=0.99,  # 0.99
         backup_entropy=True,  # default: False
         critic_ensemble_size=3,         # changed from 10 to 5
         critic_subsample_size=1,
