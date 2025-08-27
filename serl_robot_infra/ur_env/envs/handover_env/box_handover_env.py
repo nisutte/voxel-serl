@@ -91,7 +91,7 @@ def calculate_force_penalty(obs, max_force=20.):
 
 
 class UR5HandoverEnv(DualUR5Env):
-    def __init__(self, reward_scaling=0.02, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         """
         The goal of the env is always to give the parcel from right to left.
@@ -99,7 +99,6 @@ class UR5HandoverEnv(DualUR5Env):
         """
         self.goal_state_increment: int = 0
         self.inverted = False
-        self.reward_scaling = reward_scaling
 
     def combine_obs(self, ob_left, ob_right):
         if self.inverted:
@@ -265,10 +264,10 @@ class UR5HandoverEnv(DualUR5Env):
 
         if self.reached_goal_state(obs, increment=False):
             self.last_action[:] = 0.
-            return self.reward_scaling * (500. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty \
-                - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty)
+            return 500. - action_cost - action_diff_cost - orientation_cost - position_cost - max_force_penalty \
+                - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty
         else:
-            return self.reward_scaling * (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - orientation_cost \
+            return (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - orientation_cost \
                     - position_cost - max_force_penalty - relative_orientation_cost + retreat_reward - early_retreat_penalty - \
                     both_gripping_huge_action_penalty)
 
@@ -296,8 +295,8 @@ class UR5HandoverEnv(DualUR5Env):
 
 
 class UR5Handover90Degrees(UR5HandoverEnv):
-    def __init__(self, reward_scaling=0.02, **kwargs):
-        super().__init__(reward_scaling=reward_scaling, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def compute_reward(self, obs, action) -> float:
         state = obs["state"]
@@ -345,9 +344,9 @@ class UR5Handover90Degrees(UR5HandoverEnv):
 
         if self.reached_goal_state(obs, increment=False):
             self.last_action[:] = 0.
-            return self.reward_scaling * (500. - action_cost - action_diff_cost - relative_position_cost - relative_orientation_cost - max_force_penalty \
-                - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty)
+            return 500. - action_cost - action_diff_cost - relative_position_cost - relative_orientation_cost - max_force_penalty \
+                - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty
         else:
-            return self.reward_scaling * (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - relative_position_cost \
+            return (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - relative_position_cost \
                     - relative_orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty - \
                     both_gripping_huge_action_penalty)

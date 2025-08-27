@@ -19,7 +19,7 @@ from serl_launcher.wrappers.serl_obs_wrappers import SERLObsWrapper
 from serl_launcher.wrappers.chunking import ChunkingWrapper
 
 from ur_env.envs.handover_env import UR5DualCameraConfigLeft, UR5DualCameraConfigRight, UR5DualCameraConfig90DegreesLeft, UR5DualCameraConfig90DegreesRight
-from ur_env.envs.wrappers import DualSpaceMouseIntervention
+from ur_env.envs.wrappers import DualSpaceMouseIntervention, RewardScalingWrapper
 import ur_env
 
 
@@ -95,6 +95,7 @@ if __name__ == "__main__":
     env = DualToMrpWrapper(env)
     env = PlotWrapper(env)
     env = DualNormalizationWrapper(env)
+    env = RewardScalingWrapper(env)
 
     if not fake_env:
         env = DualSpaceMouseIntervention(env)
@@ -106,7 +107,7 @@ if __name__ == "__main__":
 
     transitions = []
     success_count = 0
-    success_needed = 10
+    success_needed = 5
     total_count = 0
     pbar = tqdm(total=success_needed)
 

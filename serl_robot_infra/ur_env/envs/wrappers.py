@@ -177,6 +177,15 @@ class ToMrpWrapper(gym.ObservationWrapper):
         return observation
 
 
+class RewardScalingWrapper(gym.Wrapper):
+    def __init__(self, env, reward_scaling=0.02):
+        super().__init__(env)
+        self.reward_scaling = reward_scaling
+
+    def step(self, action):
+        obs, reward, done, truncated, info = self.env.step(action)
+        return obs, self.reward_scaling * reward, done, truncated, info
+
 def rotate_state(state: np.ndarray, num_rot: int):
     assert len(state.shape) == 1 and state.shape[0] % 3 == 0
     state = state.reshape((-1, 3)).transpose()
