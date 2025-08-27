@@ -2,7 +2,7 @@ export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
 export XLA_PYTHON_CLIENT_MEM_FRACTION=.8 && \
 uv run /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@" \
     --learner \
-    --exp_name="Handover 90deg V12" \
+    --exp_name="Handover 90deg V13" \
     --camera_mode pointcloud \
     --max_traj_length 100 \
     --seed 42 \
