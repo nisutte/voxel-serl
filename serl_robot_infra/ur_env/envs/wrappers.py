@@ -184,6 +184,9 @@ class RewardScalingWrapper(gym.Wrapper):
 
     def step(self, action):
         obs, reward, done, truncated, info = self.env.step(action)
+        for key, value in info.items():
+            if isinstance(value, float) and ("cost" in key or "reward" in key or "penalty" in key):
+                info[key] = self.reward_scaling * value
         return obs, self.reward_scaling * reward, done, truncated, info
 
 def rotate_state(state: np.ndarray, num_rot: int):
