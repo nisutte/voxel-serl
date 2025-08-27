@@ -130,22 +130,22 @@ def make_drq_agent(
             std_max=3,  # was 5
         ),
         critic_network_kwargs=dict(
-            activations=nn.relu,  # todo try relu
+            activations=nn.leaky_relu,
             use_layer_norm=True,
-            hidden_dims=[256, 256],
+            hidden_dims=[256, 128],
             dropout_rate=0.0  # was 0.1
         ),
         policy_network_kwargs=dict(
-            activations=nn.relu,   # todo try relu
+            activations=nn.leaky_relu,
             use_layer_norm=True,
-            hidden_dims=[256, 256],
+            hidden_dims=[256, 128],
             dropout_rate=0.0
         ),
         temperature_init=1e-1,  # was 1e-3
-        discount=0.99,  # 0.99
+        discount=0.995,  # 0.99
         backup_entropy=True,  # default: False
-        critic_ensemble_size=2,         # changed from 10 to 5
-        critic_subsample_size=None,
+        critic_ensemble_size=3,         # changed from 10 to 5
+        critic_subsample_size=1,
         encoder_kwargs=encoder_kwargs,
         # dict(
         #     # pooling_method="spatial_softmax",        # default "spatial_learned_embeddings"
@@ -155,9 +155,11 @@ def make_drq_agent(
         # ),
         actor_optimizer_kwargs={
             "learning_rate": 3e-4,  # was 3e-4
+            "grad_clip_norm": 1.0,
         },
         critic_optimizer_kwargs={
             "learning_rate": 3e-4,  # was 3e-4
+            "grad_clip_norm": 1.0,
         },
     )
     return agent

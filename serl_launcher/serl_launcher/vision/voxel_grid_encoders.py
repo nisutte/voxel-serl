@@ -147,11 +147,11 @@ class VoxNet(nn.Module):
         )(x)
         x = max_pool(x)
 
-        x = nn.LayerNorm()(x)
-        x = l_relu(x)  # shape (B, (X-4)/2, (Y-4)/2, (Z-4)/2, F)
-
         if self.fix_pretrained_gradient:
             x = jax.lax.stop_gradient(x)
+
+        x = nn.LayerNorm()(x)
+        x = l_relu(x)  # shape (B, (X-4)/2, (Y-4)/2, (Z-4)/2, F)
 
         x = conv3d(
             features=feature_dimensions[2],            # if pretrained, only uses [..] out of 128 pretrained params as initial weights

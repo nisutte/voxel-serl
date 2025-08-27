@@ -310,12 +310,12 @@ class UR5Handover90Degrees(UR5HandoverEnv):
         suction_cost = 2. * (float(state["left/gripper_state"][1] < -0.5) and action[6 + 7 * self.inverted] > -0.5)
         suction_cost += 2. * (float(state["right/gripper_state"][1] < -0.5) and action[6 + 7 * (not self.inverted)] > -0.5)
 
-        relative_position_cost = 5 * max(0.0, -0.05 + np.linalg.norm(state["l2r/tcp_pose"][:3])) if not self.goal_state_increment else 0.
+        relative_position_cost = 20 * max(0.0, -0.05 + np.linalg.norm(state["l2r/tcp_pose"][:3])) if not self.goal_state_increment else 0.
 
         allowed_rot_degrees = 20.
         T_l2r = pose_to_T(state["l2r/tcp_pose"])
         rel_rot_y = R.from_matrix(T_l2r[:3, :3]).as_euler("zyz")  # Y should be pi/2 for 90 degrees
-        relative_orientation_cost = 2. * max(0., abs(abs(rel_rot_y[1]) - np.pi / 2. ) - allowed_rot_degrees)
+        relative_orientation_cost = 10. * max(0., abs(abs(rel_rot_y[1]) - np.pi / 2. ) - allowed_rot_degrees * np.pi / 180.)
 
         max_force_penalty = 0.4 * calculate_force_penalty(obs, max_force=10)
         retreat_reward = 0.5 * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
