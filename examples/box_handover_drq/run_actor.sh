@@ -1,5 +1,5 @@
 export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
-export XLA_PYTHON_CLIENT_MEM_FRACTION=.1 && \
+export XLA_PYTHON_CLIENT_MEM_FRACTION=.15 && \
 uv run /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@" \
     --actor \
     --exp_name="Handover 90deg V12" \
@@ -8,7 +8,7 @@ uv run /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@
     --seed 42 \
     --max_steps 10000 \
     --utd_ratio 2 \
-    --batch_size 128 \
+    --batch_size 256 \
     --eval_period 0 \
     --activate_90_degrees \
     \
