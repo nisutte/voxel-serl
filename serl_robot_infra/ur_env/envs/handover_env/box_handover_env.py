@@ -125,7 +125,7 @@ class UR5HandoverEnv(DualUR5Env):
             infos["dropping_cost"] = 0
         if would_drop:
             reward -= 50
-            infos["dropping_cost"] -= 50
+            infos["dropping_cost"] += 50
         return obs, reward, done, truncated, infos
 
     def reset(self, **kwargs):
@@ -321,7 +321,6 @@ class UR5Handover90Degrees(UR5HandoverEnv):
         retreat_reward = 0.5 * (-action[1] - action[7 + 1]) if self.goal_state_increment > 0 else 0.
         both_gripping = state["left/gripper_state"][1] > 0.5 and state["right/gripper_state"][1] > 0.5
         early_retreat_penalty = 1.0 * (action[1] + action[7 + 1]) if both_gripping else 0.
-        both_gripping_huge_action_penalty = 0.5 * (np.sum(np.power(action[:6], 2)) + np.sum(np.power(action[7:13], 2))) if both_gripping else 0.
 
         cost_info = dict(
             step_cost=step_cost,
@@ -334,9 +333,8 @@ class UR5Handover90Degrees(UR5HandoverEnv):
             max_force_penalty=max_force_penalty,
             retreat_reward=retreat_reward,
             early_retreat_penalty=early_retreat_penalty,
-            both_gripping_huge_action_penalty=both_gripping_huge_action_penalty,
             total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost
-                 - relative_position_cost - relative_orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty)
+                 - relative_position_cost - relative_orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty)
         )
 
         for key, info in cost_info.items():
@@ -345,8 +343,7 @@ class UR5Handover90Degrees(UR5HandoverEnv):
         if self.reached_goal_state(obs, increment=False):
             self.last_action[:] = 0.
             return 500. - action_cost - action_diff_cost - relative_position_cost - relative_orientation_cost - max_force_penalty \
-                - relative_orientation_cost + retreat_reward - early_retreat_penalty - both_gripping_huge_action_penalty
+                - relative_orientation_cost + retreat_reward - early_retreat_penalty
         else:
             return (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - relative_position_cost \
-                    - relative_orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty - \
-                    both_gripping_huge_action_penalty)
+                    - relative_orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty)
