@@ -157,9 +157,8 @@ class JaxRLTrainState(struct.PyTreeNode):
             lambda _, update: updates_flat.append(update), self.txs, updates
         )
 
-        # apply all the updates averaged, not summed
         updates_acc = jax.tree_map(
-            lambda *xs: jnp.mean(jnp.array(xs), axis=0), *updates_flat
+            lambda *xs: jnp.sum(jnp.array(xs), axis=0), *updates_flat
         )
         new_params = optax.apply_updates(self.params, updates_acc)
 

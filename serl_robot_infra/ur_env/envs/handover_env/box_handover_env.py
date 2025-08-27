@@ -315,13 +315,13 @@ class UR5Handover90Degrees(UR5HandoverEnv):
         cutoff_dist = np.array([0.05, 0.3, 0.05])  # lessen y direction (forward)
         pos_diff_left = state["left/tcp_pose"][:3] - self.env_left.curr_reset_pose[:3]
         pos_diff_right = state["right/tcp_pose"][:3] - self.env_right.curr_reset_pose[:3]
-        position_cost_left = 10. * np.sum(
+        position_cost_left = 1. * np.sum(
             np.where(np.abs(pos_diff_left) > cutoff_dist, np.abs(pos_diff_left - np.sign(pos_diff_left) * cutoff_dist),
                      0.0))
-        position_cost_right = 20. * np.sum(
+        position_cost_right = 1. * np.sum(
             np.where(np.abs(pos_diff_right) > cutoff_dist,
                      np.abs(pos_diff_right - np.sign(pos_diff_right) * cutoff_dist), 0.0))
-        position_cost = position_cost_left + position_cost_right
+        position_cost = min(1., position_cost_left + position_cost_right)
 
         w = np.array([0.3, 0.3, 0.2])
         def orientation_cost_fun(curr_quat, target_quat):
@@ -331,8 +331,8 @@ class UR5Handover90Degrees(UR5HandoverEnv):
 
         orientation_cost_left = 20. * orientation_cost_fun(state["left/tcp_pose"][3:], self.env_left.curr_reset_pose[3:])
         orientation_cost_right = 20. * orientation_cost_fun(state["right/tcp_pose"][3:], self.env_right.curr_reset_pose[3:])
-        orientation_cost = orientation_cost_left + orientation_cost_right
-        
+        orientation_cost = min(1., orientation_cost_left + orientation_cost_right)
+
         allowed_rot_degrees = 15.
         T_l2r = pose_to_T(state["l2r/tcp_pose"])
         rel_rot_y = R.from_matrix(T_l2r[:3, :3]).as_euler("zyz")  # Y should be pi/2 for 90 degrees

@@ -141,10 +141,10 @@ def make_drq_agent(
             hidden_dims=[256, 256],
             dropout_rate=0.0
         ),
-        temperature_init=1e-3,  # was 1e-3
+        temperature_init=2e-3,  # was 1e-3
         discount=0.99,  # 0.99
         backup_entropy=True,  # default: False
-        critic_ensemble_size=3,         # changed from 10 to 5
+        critic_ensemble_size=4,         # changed from 10 to 5
         critic_subsample_size=1,
         encoder_kwargs=encoder_kwargs,
         # dict(
