@@ -2,5 +2,9 @@
     "python.analysis.extraPaths": [
         "./serl_launcher",
         "./serl_robot_infra"
+    ],
+    "cursorpyright.analysis.extraPaths": [
+        "./serl_launcher",
+        "./serl_robot_infra"
     ]
 }

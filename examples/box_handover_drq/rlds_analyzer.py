@@ -30,7 +30,7 @@ def print_norm_infos(dataset):
         if len(steps) > 6 and j > 50:
             for i, step in enumerate(steps):
                 # 'action', 'discount', 'is_first', 'is_last', 'is_terminal', 'observation', 'reward'
-                observations.append(get_numpy_from_tensor(step["observation"]).flatten())
+                observations.append(get_numpy_from_tensor(step["observation"]["state"]).flatten())
 
     print("obs len  ", len(observations))
     named_obs = [name_obs(obs) for obs in observations]
@@ -53,6 +53,17 @@ def print_norm_infos(dataset):
         else:
             print(f"{key}  -> {np.mean(value, axis=(0, 1))}   {np.std(value, axis=(0, 1))}")
             constants[key] = [np.mean(value, axis=(0, 1)), np.std(value, axis=(0, 1))]
+
+    for types in ("pose", "vel", "force", "torque"):
+        xyz, rot = [], []
+        for key, value in obs_info.items():
+            if types in key:
+                xyz.append(value[..., :3])
+                rot.append(value[..., 3:])
+
+        xyz, rot = np.vstack(xyz), np.vstack(rot)
+        print(f"{types} pos -> {np.mean(xyz, axis=0)} {np.std(xyz, axis=0)}")
+        print(f"{types} rot -> {np.mean(rot, axis=0)} {np.std(rot, axis=0)}")
 
 
 def check_consistency(dataset):
@@ -80,7 +91,7 @@ def check_consistency(dataset):
     # for obs in observations[55]:
     #     print(f"a: {obs['left/action'][:3]}   s:{obs['left/tcp_pose'][:3]} ")
 
-    action = np.asarray([o["left/action"][:3] for o in observations[55]]) * 0.05
+    action = np.asarray([o["action"][:3] for o in observations[55]]) * 0.05
     pose = np.asarray([o["left/tcp_pose"][:3] for o in observations[55]])
     print(f"{action.shape}, {pose.shape}")
 
@@ -95,7 +106,8 @@ def check_consistency(dataset):
 
 
 if __name__ == "__main__":
-    RLDS_Path = "/home/nico/real-world-rl/serl/examples/box_handover_drq/rlds"
+    RLDS_Path = ("/home/nico/real-world-rl/serl/examples/box_handover_drq/rlds")
     dataset = tfds.builder_from_directory(RLDS_Path).as_dataset(split="all")
 
-    check_consistency(dataset)
+    # check_consistency(dataset)
+    print_norm_infos(dataset)
