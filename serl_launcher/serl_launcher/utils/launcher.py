@@ -155,11 +155,11 @@ def make_drq_agent(
         # ),
         actor_optimizer_kwargs={
             "learning_rate": 3e-4,  # was 3e-4
-            "clip_grad_norm": 1.0,
+            "clip_grad_norm": 10.0,
         },
         critic_optimizer_kwargs={
             "learning_rate": 3e-4,  # was 3e-4
-            "clip_grad_norm": 1.0,
+            "clip_grad_norm": 100.0,
         },
     )
     return agent
