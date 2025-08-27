@@ -225,15 +225,12 @@ class JaxRLTrainState(struct.PyTreeNode):
                 sq_sums = [jnp.sum(jnp.square(x)) for x in leaves]
                 return jnp.sqrt(jnp.sum(jnp.stack(sq_sums)))
 
-            grad_norms = jax.tree_map(_global_l2_norm, grads)
+            # Compute one scalar norm per top-level network (actor/critic/temperature)
+            grad_norms = {name: _global_l2_norm(grad_tree) for name, grad_tree in grads.items()}
 
-            def _attach_norm(info_dict, norm):
-                # Ensure we return a dict and add grad_norm metric
-                new_info = dict(info_dict) if isinstance(info_dict, dict) else {"aux": info_dict}
-                new_info["grad_norm"] = norm
-                return new_info
-
-            aux = jax.tree_map(_attach_norm, aux, grad_norms)
+            # Attach per-network grad norm into aux at the same top-level keys
+            aux = {name: (dict(info) if isinstance(info, dict) else {"aux": info,}) | {"grad_norm": grad_norms[name]}
+                   for name, info in aux.items()}
 
             return self.apply_gradients(grads=grads), aux
         else:
