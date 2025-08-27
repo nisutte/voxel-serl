@@ -130,13 +130,13 @@ def make_drq_agent(
             std_max=3,  # was 5
         ),
         critic_network_kwargs=dict(
-            activations=nn.relu,  # todo try relu
+            activations=nn.relu,
             use_layer_norm=True,
             hidden_dims=[256, 256],
             dropout_rate=0.0  # was 0.1
         ),
         policy_network_kwargs=dict(
-            activations=nn.relu,   # todo try relu
+            activations=nn.relu,
             use_layer_norm=True,
             hidden_dims=[256, 256],
             dropout_rate=0.0
