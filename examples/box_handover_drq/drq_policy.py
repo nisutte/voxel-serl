@@ -46,6 +46,7 @@ from ur_env.envs.plot_wrapper import PlotWrapper
 from ur_env.envs.relative_env import DualRelativeFrame
 
 import ur_env
+from ur_env.envs.wrappers import RewardScalingWrapper
 
 # used to debug nan errors (also in jit-ed functions)
 # jax.config.update("jax_debug_nans", True)
@@ -492,6 +493,7 @@ def main(_):
     env = PlotWrapper(env)
     env = ObservationStatisticsWrapper(env)
     env = DualNormalizationWrapper(env)
+    env = RewardScalingWrapper(env)
 
     # if FLAGS.actor:
     #     env = DualSpaceMouseIntervention(env)
