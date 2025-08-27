@@ -216,6 +216,25 @@ class JaxRLTrainState(struct.PyTreeNode):
         if has_aux:
             grads = jax.tree_map(lambda _, x: x[0], loss_fns, grads_and_aux)
             aux = jax.tree_map(lambda _, x: x[1], loss_fns, grads_and_aux)
+
+            # Compute per-network global gradient L2 norms and attach to aux
+            def _global_l2_norm(pytree):
+                leaves = [x for x in jax.tree_util.tree_leaves(pytree) if x is not None]
+                if not leaves:
+                    return jnp.array(0.0)
+                sq_sums = [jnp.sum(jnp.square(x)) for x in leaves]
+                return jnp.sqrt(jnp.sum(jnp.stack(sq_sums)))
+
+            grad_norms = jax.tree_map(_global_l2_norm, grads)
+
+            def _attach_norm(info_dict, norm):
+                # Ensure we return a dict and add grad_norm metric
+                new_info = dict(info_dict) if isinstance(info_dict, dict) else {"aux": info_dict}
+                new_info["grad_norm"] = norm
+                return new_info
+
+            aux = jax.tree_map(_attach_norm, aux, grad_norms)
+
             return self.apply_gradients(grads=grads), aux
         else:
             return self.apply_gradients(grads=grads_and_aux)
