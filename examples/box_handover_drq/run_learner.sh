@@ -11,12 +11,12 @@ uv run /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@
     --batch_size 256 \
     --checkpoint_period 1000 \
     --checkpoint_path /home/nico/real-world-rl/serl/examples/box_handover_drq/checkpoints \
-    --demo_path /home/nico/real-world-rl/serl/examples/box_handover_drq/box_picking_6_demos_90deg_aug26.pkl \
+    --demo_path /home/nico/real-world-rl/serl/examples/box_handover_drq/box_picking_5_demos_aug27_v13.pkl \
     --activate_90_degrees \
     \
     --encoder_type voxnet-pretrained \
     --state_mask all \
-    --encoder_bottleneck_dim 128 \
+    --encoder_bottleneck_dim 64 \
 #    --debug
 #    --log_rlds_path /home/nico/real-world-rl/serl/examples/box_handover_drq/rlds \
 #    --checkpoint_preload_path "/home/nico/real-world-rl/serl/examples/box_handover_drq/checkpoints Handover V10 real ensemblize 0821-14:33" \

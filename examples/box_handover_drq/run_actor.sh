@@ -14,5 +14,5 @@ uv run /home/nico/real-world-rl/serl/examples/box_handover_drq/drq_policy.py "$@
     \
     --encoder_type voxnet-pretrained \
     --state_mask all \
-    --encoder_bottleneck_dim 128 \
+    --encoder_bottleneck_dim 64 \
 #    --debug
