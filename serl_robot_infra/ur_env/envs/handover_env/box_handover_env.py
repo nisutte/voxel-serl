@@ -310,9 +310,30 @@ class UR5Handover90Degrees(UR5HandoverEnv):
         suction_cost = 2. * (float(state["left/gripper_state"][1] < -0.5) and action[6 + 7 * self.inverted] > -0.5)
         suction_cost += 2. * (float(state["right/gripper_state"][1] < -0.5) and action[6 + 7 * (not self.inverted)] > -0.5)
 
-        relative_position_cost = 20 * max(0.0, -0.05 + np.linalg.norm(state["l2r/tcp_pose"][:3])) if not self.goal_state_increment else 0.
+        relative_position_cost = 5 * max(0.0, -0.05 + np.linalg.norm(state["l2r/tcp_pose"][:3])) if not self.goal_state_increment else 0.
 
-        allowed_rot_degrees = 20.
+        cutoff_dist = np.array([0.05, 0.3, 0.05])  # lessen y direction (forward)
+        pos_diff_left = state["left/tcp_pose"][:3] - self.env_left.curr_reset_pose[:3]
+        pos_diff_right = state["right/tcp_pose"][:3] - self.env_right.curr_reset_pose[:3]
+        position_cost_left = 10. * np.sum(
+            np.where(np.abs(pos_diff_left) > cutoff_dist, np.abs(pos_diff_left - np.sign(pos_diff_left) * cutoff_dist),
+                     0.0))
+        position_cost_right = 20. * np.sum(
+            np.where(np.abs(pos_diff_right) > cutoff_dist,
+                     np.abs(pos_diff_right - np.sign(pos_diff_right) * cutoff_dist), 0.0))
+        position_cost = position_cost_left + position_cost_right
+
+        w = np.array([0.3, 0.3, 0.2])
+        def orientation_cost_fun(curr_quat, target_quat):
+            rel_rot = R.from_quat(target_quat).inv() * R.from_quat(curr_quat)
+            cost = sum(w * rel_rot.as_rotvec() ** 2)
+            return max(cost - 0.03, 0.)
+
+        orientation_cost_left = 20. * orientation_cost_fun(state["left/tcp_pose"][3:], self.env_left.curr_reset_pose[3:])
+        orientation_cost_right = 20. * orientation_cost_fun(state["right/tcp_pose"][3:], self.env_right.curr_reset_pose[3:])
+        orientation_cost = orientation_cost_left + orientation_cost_right
+        
+        allowed_rot_degrees = 15.
         T_l2r = pose_to_T(state["l2r/tcp_pose"])
         rel_rot_y = R.from_matrix(T_l2r[:3, :3]).as_euler("zyz")  # Y should be pi/2 for 90 degrees
         relative_orientation_cost = 10. * max(0., abs(abs(rel_rot_y[1]) - np.pi / 2. ) - allowed_rot_degrees * np.pi / 180.)
@@ -330,11 +351,13 @@ class UR5Handover90Degrees(UR5HandoverEnv):
             suction_cost=suction_cost,
             relative_position_cost=relative_position_cost,
             relative_orientation_cost=relative_orientation_cost,
+            position_cost=position_cost,
+            orientation_cost=orientation_cost,
             max_force_penalty=max_force_penalty,
             retreat_reward=retreat_reward,
             early_retreat_penalty=early_retreat_penalty,
             total_cost=-(-action_cost - action_diff_cost - step_cost + suction_reward - suction_cost
-                 - relative_position_cost - relative_orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty)
+                 - relative_position_cost - relative_orientation_cost - position_cost - orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty)
         )
 
         for key, info in cost_info.items():
@@ -342,8 +365,8 @@ class UR5Handover90Degrees(UR5HandoverEnv):
 
         if self.reached_goal_state(obs, increment=False):
             self.last_action[:] = 0.
-            return 500. - action_cost - action_diff_cost - relative_position_cost - relative_orientation_cost - max_force_penalty \
+            return 1000. - action_cost - action_diff_cost - relative_position_cost - relative_orientation_cost - position_cost - orientation_cost - max_force_penalty \
                 - relative_orientation_cost + retreat_reward - early_retreat_penalty
         else:
             return (0. - action_cost - action_diff_cost - step_cost + suction_reward - suction_cost - relative_position_cost \
-                    - relative_orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty)
+                    - relative_orientation_cost - position_cost - orientation_cost - max_force_penalty + retreat_reward - early_retreat_penalty)

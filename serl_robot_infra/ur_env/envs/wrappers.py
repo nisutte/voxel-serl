@@ -178,7 +178,7 @@ class ToMrpWrapper(gym.ObservationWrapper):
 
 
 class RewardScalingWrapper(gym.Wrapper):
-    def __init__(self, env, reward_scaling=0.02):
+    def __init__(self, env, reward_scaling=0.1):
         super().__init__(env)
         self.reward_scaling = reward_scaling
 
