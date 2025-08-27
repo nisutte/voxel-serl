@@ -40,12 +40,11 @@ Voxel SERL builds upon the original [SERL](https://github.com/rail-berkeley/serl
   - [x] made tanh distribution narrower (less noisy actions, less jitter)
   - [x] really ensemblize critic!
   - [x] update the voxnet with the new relu and LN 
+- [x] Make a simple uv setup for future usage (from requirements, and also add external JAX links, tough...)
+- [x] examine ensemble sizes and subsampling
+- [x] make position augmentation for pose data (random noise)
 - [ ] train only on pc data, like in the picking task
-- [ ] Make a simple uv setup for future usage (from requirements, and also add external JAX links, tough...)
 - [ ] Add pose estimation to automate the pickup
-- [ ] examine ensemble sizes and subsampling
-- [ ] make position augmentation for pose data (also rotation)
-- [ ] enhance voxel grid augmentation (tough since it is 3dconv)
 
 
 ## Contributions
