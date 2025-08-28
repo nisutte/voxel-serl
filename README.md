@@ -71,8 +71,9 @@ For CPU-only installs, you can use `"jax==0.4.25"` (no CUDA extra) with the same
 
 ### Information
 
-- The D405 camera holder Onshape file can be found [here](https://cad.onshape.com/documents/adfbc29573a3362dcbc21dfa/w/157f299ac48f41d6b5d551f9/e/94e430388f5379a0342fc4b5?renderMode=0&uiState=68b060cb94d7fa50e8615103).
+In this setup, two UR5 robotic arms are positioned facing each other to perform a box handover using suction grippers. Each arm is equipped with a wrist-mounted D405 camera that supplies voxelized, localized point cloud data to the RL pipeline. The episode begins after a scripted box pickup, which is handled during the environment reset. Both robots are jointly controlled by a single RL policy operating in a 14-dimensional action space. Safety mechanisms automatically detect and handle collisions if the arms move too close together or if excessive forces are detected during the handover.
 
+- The Onshape design file for the D405 camera holder is available [here](https://cad.onshape.com/documents/adfbc29573a3362dcbc21dfa/w/157f299ac48f41d6b5d551f9/e/94e430388f5379a0342fc4b5?renderMode=0&uiState=68b060cb94d7fa50e8615103).
 
 ### Changes
 
