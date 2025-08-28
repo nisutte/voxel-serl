@@ -59,11 +59,15 @@ For CPU-only installs, you can use `"jax==0.4.25"` (no CUDA extra) with the same
 
 ### Modaliy examples
 <p>
-  <img src="./docs/images/trajectory%20timeline.png" width="30%"/>
+  <img src="./docs/images/trajectory%20timeline.png" width="205"/>
 </p>
 
 
 ## Box handover (multi robot)
+
+<p>
+  <img src="./docs/images/box_handover.png" width="30%"/>
+</p>
 
 ### Information
 
