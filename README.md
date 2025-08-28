@@ -101,22 +101,22 @@ Calibration: For robot-to-robot (base-to-base) calibration, I used my supervisor
 
 | Key | Shape | Notes |
 |----------------------|-------|-----------------------------------------------|
-| left/tcp_pose | 6 | TCP pose (xyz + quat; 6 if MRP wrapper active) |
-| left/tcp_vel | 6 | Linear xyz, angular rpy (or MRP rate if wrapped) |
-| left/gripper_state | 1 | Gripper opening |
-| left/tcp_force | 3 | Force at TCP |
-| left/tcp_torque | 3 | Torque at TCP |
+| left/tcp_pose | 6 | TCP pose (xyz, MRP) |
+| left/tcp_vel | 6 | Linear xyz, angular MRP |
+| left/gripper_state | 2 | Left gripper object detection and pressure |
+| left/tcp_force | 3 | Force at left TCP |
+| left/tcp_torque | 3 | Torque at left TCP |
 | left/action | 7 | Last applied action for left arm |
-| right/tcp_pose | 6 | Same as left for right arm |
-| right/tcp_vel | 6 | Same as left |
+| right/tcp_pose | 6 |  |
+| right/tcp_vel | 6 |  |
 | right/gripper_state | 2 |  |
 | right/tcp_force | 3 |  |
 | right/tcp_torque | 3 |  |
-| right/action | 7 | Last applied action for right arm |
+| right/action | 7 |  |
 | l2r/tcp_pose | 6 | Left-EE to Right-EE relative pose |
-| l2r/tcp_vel | 6 | Relative velocity (in EE frame) |
+| l2r/tcp_vel | 6 | Relative velocity (in left EE frame) |
 | r2l/tcp_pose | 6 | Right-EE to Left-EE relative pose |
-| r2l/tcp_vel | 6 | Relative velocity (in EE frame) |
+| r2l/tcp_vel | 6 | Relative velocity (in right EE frame) |
 
 Notes:
 - Pose representation is quaternion by default; with `DualToMrpWrapper` it becomes 6D (xyz + MRP). Relative angular rates are mapped accordingly.
